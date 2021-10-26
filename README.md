@@ -1,0 +1,1 @@
+# aware - AWS Resource Explorer
