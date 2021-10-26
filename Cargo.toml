@@ -1,7 +1,10 @@
 [package]
 name = "aware"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 description = "AWS Resource Explorer"
 
 [dependencies]
+aws-config = "0.0.22-alpha"
+aws-sdk-ec2 = "0.0.22-alpha"
+tokio = { version = "1.0", features = ["full"] }
