@@ -114,6 +114,21 @@ pub(super) async fn vpc_peering_connections(
     Ok(connections)
 }
 
+pub(super) async fn vpc_endpoints(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::VpcEndpoint>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let endpoints = client
+        .describe_vpc_endpoints()
+        .filters(vpc)
+        .send()
+        .await?
+        .vpc_endpoints
+        .unwrap_or_default();
+    Ok(endpoints)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)
