@@ -40,6 +40,8 @@ mod show;
 struct Aware {
     #[structopt(long, short)]
     region: Vec<String>,
+    #[structopt(long, short)]
+    vpc: Vec<String>,
 }
 
 #[tokio::main]
@@ -51,10 +53,17 @@ async fn main() -> Result<(), ec2::Error> {
     } else {
         aware.region
     };
-    collect(regions).await
+    collect(regions, aware.vpc).await
 }
 
-async fn collect(regions: Vec<String>) -> Result<(), ec2::Error> {
+fn filter(key: &str, value: &str) -> ec2::model::Filter {
+    ec2::model::Filter::builder()
+        .name(key)
+        .values(value)
+        .build()
+}
+
+async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Error> {
     let regioned_clients = regions
         .into_iter()
         .map(ec2::Region::new)
@@ -67,6 +76,12 @@ async fn collect(regions: Vec<String>) -> Result<(), ec2::Error> {
         let client = ec2::Client::new(&shared_config);
 
         let vpcs = get_all_vpc_from_region(&client).await?;
+        let vpcs = if vpc.is_empty() {
+            vpcs
+        } else {
+            vpcs.into_iter().filter(|v| vpc.contains(&v.id())).collect()
+        };
+
         let progress = indicatif::ProgressBar::new(vpcs.len() as u64).with_style(
             indicatif::ProgressStyle::default_bar().template("{msg} {wide_bar} {pos}/{len}"),
         );
@@ -113,17 +128,35 @@ async fn get_all_vpc_from_region(client: &ec2::Client) -> Result<Vec<ec2::model:
     Ok(vpcs)
 }
 
+fn add_children(ptree: &mut ptree::TreeBuilder, title: impl ToString, resources: Vec<impl Show>) {
+    if !resources.is_empty() {
+        ptree.begin_child(title.to_string());
+        resources.into_iter().for_each(|resource| {
+            ptree.add_empty_child(resource.id_and_name());
+        });
+        ptree.end_child();
+    }
+}
+
 async fn collect_vpc(
     client: &ec2::Client,
     vpc: &ec2::model::Vpc,
     ptree: &mut ptree::TreeBuilder,
 ) -> Result<(), ec2::Error> {
     ptree.begin_child(vpc.id_and_name());
+
     if let Some(ref vpc) = vpc.vpc_id {
-        collect_subnets(client, vpc, ptree).await?;
-        collect_instances(client, vpc, ptree).await?;
-        collect_internet_gateways(client, vpc, ptree).await?;
-        collect_route_tables(client, vpc, ptree).await?;
+        macro_rules! collect {
+            ($collector:ident, $title:expr) => {{
+                $collector(client, vpc)
+                    .await
+                    .map(|resources| add_children(ptree, $title, resources))?
+            }};
+        }
+        collect!(subnets, "Subnets");
+        collect!(instances, "Instances");
+        collect!(internet_gateways, "Internet Gateway");
+        collect!(route_tables, "Route Tables");
 
         // let network_acls = get_all_network_acls_from_vpc(client, vpc).await?;
         // resources.extend(network_acls);
@@ -150,98 +183,54 @@ async fn collect_vpc(
     Ok(())
 }
 
-async fn collect_internet_gateways(
+async fn internet_gateways(
     client: &ec2::Client,
     vpc: &str,
-    ptree: &mut ptree::TreeBuilder,
-) -> Result<(), ec2::Error> {
-    ptree.begin_child("Internet Gateways".to_string());
-    let vpc = ec2::model::Filter::builder()
-        .name("attachment.vpc-id")
-        .values(vpc)
-        .build();
-    client
+) -> Result<Vec<ec2::model::InternetGateway>, ec2::Error> {
+    let vpc = filter("attachment.vpc-id", vpc);
+    let igw = client
         .describe_internet_gateways()
         .filters(vpc)
         .send()
         .await?
         .internet_gateways
-        .unwrap_or_default()
-        .into_iter()
-        .for_each(|igw| {
-            ptree.add_empty_child(igw.id_and_name());
-        });
-
-    ptree.end_child();
-
-    Ok(())
+        .unwrap_or_default();
+    Ok(igw)
 }
 
-async fn collect_subnets(
-    client: &ec2::Client,
-    vpc: &str,
-    ptree: &mut ptree::TreeBuilder,
-) -> Result<(), ec2::Error> {
-    ptree.begin_child("Subnets".to_string());
-    let vpc = ec2::model::Filter::builder()
-        .name("vpc-id")
-        .values(vpc)
-        .build();
-    client
+async fn subnets(client: &ec2::Client, vpc: &str) -> Result<Vec<ec2::model::Subnet>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let subnets = client
         .describe_subnets()
         .filters(vpc)
         .send()
         .await?
         .subnets
-        .unwrap_or_default()
-        .into_iter()
-        .for_each(|subnet| {
-            ptree.add_empty_child(subnet.id_and_name());
-        });
-
-    ptree.end_child();
-
-    Ok(())
+        .unwrap_or_default();
+    Ok(subnets)
 }
 
-async fn collect_route_tables(
+async fn route_tables(
     client: &ec2::Client,
     vpc: &str,
-    ptree: &mut ptree::TreeBuilder,
-) -> Result<(), ec2::Error> {
-    ptree.begin_child("Route Tables".to_string());
-    let vpc = ec2::model::Filter::builder()
-        .name("vpc-id")
-        .values(vpc)
-        .build();
-    client
+) -> Result<Vec<ec2::model::RouteTable>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let tables = client
         .describe_route_tables()
         .filters(vpc)
         .send()
         .await?
         .route_tables
-        .unwrap_or_default()
-        .into_iter()
-        .for_each(|table| {
-            ptree.add_empty_child(table.id_and_name());
-        });
-
-    ptree.end_child();
-
-    Ok(())
+        .unwrap_or_default();
+    Ok(tables)
 }
 
-async fn collect_instances(
+async fn instances(
     client: &ec2::Client,
     vpc: &str,
-    ptree: &mut ptree::TreeBuilder,
-) -> Result<(), ec2::Error> {
-    ptree.begin_child("Instances".to_string());
-    let vpc = ec2::model::Filter::builder()
-        .name("vpc-id")
-        .values(vpc)
-        .build();
-    client
+) -> Result<Vec<ec2::model::Instance>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let instances = client
         .describe_instances()
         .filters(vpc)
         .send()
@@ -250,11 +239,6 @@ async fn collect_instances(
         .unwrap_or_default()
         .into_iter()
         .flat_map(|reservation| reservation.instances.unwrap_or_default())
-        .for_each(|instance| {
-            ptree.add_empty_child(instance.id_and_name());
-        });
-
-    ptree.end_child();
-
-    Ok(())
+        .collect();
+    Ok(instances)
 }
