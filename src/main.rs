@@ -72,7 +72,7 @@ async fn scrape(regions: Vec<String>) -> Result<(), ec2::Error> {
 
         let vpcs = get_all_vpc_from_region(&client).await?;
         for vpc in vpcs {
-            let _ = scrape_vpc(&client, &vpc, &mut tree).await?;
+            let _ = collect_vpc(&client, &vpc, &mut tree).await?;
             // println!("{:#?}", resources);
         }
         let tree = tree.build();
@@ -112,16 +112,17 @@ async fn get_all_vpc_from_region(client: &ec2::Client) -> Result<Vec<ec2::model:
     Ok(vpcs)
 }
 
-async fn scrape_vpc(
+async fn collect_vpc(
     client: &ec2::Client,
     vpc: &ec2::model::Vpc,
     ptree: &mut ptree::TreeBuilder,
 ) -> Result<(), ec2::Error> {
     ptree.begin_child(vpc.id_and_name());
     if let Some(ref vpc) = vpc.vpc_id {
-        println!("Scraping VPC {}", vpc);
-        scrape_subnets(client, vpc, ptree).await?;
-        scrape_internet_gateways(client, vpc, ptree).await?;
+        println!("Checking VPC {}", vpc);
+        collect_subnets(client, vpc, ptree).await?;
+        collect_internet_gateways(client, vpc, ptree).await?;
+        collect_route_tables(client, vpc, ptree).await?;
 
         // let route_tables = get_all_route_tables_from_vpc(client, vpc).await?;
         // resources.extend(route_tables);
@@ -154,7 +155,7 @@ async fn scrape_vpc(
     Ok(())
 }
 
-async fn scrape_internet_gateways(
+async fn collect_internet_gateways(
     client: &ec2::Client,
     vpc: &str,
     ptree: &mut ptree::TreeBuilder,
@@ -181,7 +182,7 @@ async fn scrape_internet_gateways(
     Ok(())
 }
 
-async fn scrape_subnets(
+async fn collect_subnets(
     client: &ec2::Client,
     vpc: &str,
     ptree: &mut ptree::TreeBuilder,
@@ -197,6 +198,33 @@ async fn scrape_subnets(
         .send()
         .await?
         .subnets
+        .unwrap_or_default()
+        .into_iter()
+        .for_each(|subnet| {
+            ptree.add_empty_child(subnet.id_and_name());
+        });
+
+    ptree.end_child();
+
+    Ok(())
+}
+
+async fn collect_route_tables(
+    client: &ec2::Client,
+    vpc: &str,
+    ptree: &mut ptree::TreeBuilder,
+) -> Result<(), ec2::Error> {
+    ptree.begin_child("Route Tables".to_string());
+    let vpc = ec2::model::Filter::builder()
+        .name("vpc-id")
+        .values(vpc)
+        .build();
+    client
+        .describe_route_tables()
+        .filters(vpc)
+        .send()
+        .await?
+        .route_tables
         .unwrap_or_default()
         .into_iter()
         .for_each(|subnet| {
