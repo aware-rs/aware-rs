@@ -99,6 +99,21 @@ pub(super) async fn network_acls(
     Ok(acls)
 }
 
+pub(super) async fn vpc_peering_connections(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::VpcPeeringConnection>, ec2::Error> {
+    let vpc = filter("requester-vpc-info.vpc-id", vpc);
+    let connections = client
+        .describe_vpc_peering_connections()
+        .filters(vpc)
+        .send()
+        .await?
+        .vpc_peering_connections
+        .unwrap_or_default();
+    Ok(connections)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)

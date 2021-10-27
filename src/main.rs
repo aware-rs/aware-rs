@@ -128,9 +128,7 @@ async fn collect_vpc(
         collect!(aws::internet_gateways, "Internet Gateway");
         collect!(aws::route_tables, "Route Tables");
         collect!(aws::network_acls, "Network ACLs");
-
-        // let vpc_peering_connections = get_all_vpc_peering_connections_from_vpc(client, vpc).await?;
-        // resources.extend(vpc_peering_connections);
+        collect!(aws::vpc_peering_connections, "VPC Peering Connections");
 
         // let vpc_endpoints = get_all_vpc_endpoints_from_vpc(client, vpc).await?;
         // resources.extend(vpc_endpoints);

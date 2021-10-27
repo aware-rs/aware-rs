@@ -82,6 +82,16 @@ impl Show for ec2::model::NetworkAcl {
     }
 }
 
+impl Show for ec2::model::VpcPeeringConnection {
+    fn id(&self) -> String {
+        self.vpc_peering_connection_id.clone().unwrap_or_default()
+    }
+
+    fn tags(&self) -> &Option<Vec<ec2::model::Tag>> {
+        &self.tags
+    }
+}
+
 fn format_name(tags: &Option<Vec<ec2::model::Tag>>) -> String {
     get_name_tag_if_any(tags)
         .map(|name| format!(" ({})", name))
