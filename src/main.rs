@@ -102,7 +102,6 @@ async fn get_all_vpc_from_region(client: &ec2::Client) -> Result<Vec<ec2::model:
         .vpcs
         .unwrap_or_default()
         .into_iter()
-        // .filter_map(|vpc| vpc.vpc_id)
         .collect();
     Ok(vpcs)
 }
@@ -167,7 +166,7 @@ async fn scrape_internet_gateways(
         .internet_gateways
         .unwrap_or_default()
         .into_iter()
-        .filter_map(|igw| igw.internet_gateway_id)
+        .map(|igw| igw.id_and_name())
         .collect();
     Ok(igw)
 }

@@ -17,6 +17,19 @@ impl Show for ec2::model::Vpc {
     }
 }
 
+impl Show for ec2::model::InternetGateway {
+    fn id_and_name(&self) -> String {
+        let name = get_name_tag_if_any(&self.tags)
+            .map(|name| format!(" ({})", name))
+            .unwrap_or_default();
+        if let Some(ref id) = self.internet_gateway_id {
+            format!("{}{}", id, name)
+        } else {
+            name
+        }
+    }
+}
+
 fn get_name_tag_if_any(tags: &Option<Vec<ec2::model::Tag>>) -> Option<String> {
     tags.as_deref()
         .unwrap_or_default()
