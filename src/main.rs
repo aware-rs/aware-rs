@@ -71,10 +71,16 @@ async fn scrape(regions: Vec<String>) -> Result<(), ec2::Error> {
         let client = ec2::Client::new(&shared_config);
 
         let vpcs = get_all_vpc_from_region(&client).await?;
+        let progress = indicatif::ProgressBar::new(vpcs.len() as u64).with_style(
+            indicatif::ProgressStyle::default_bar().template("{msg} {wide_bar} {pos}/{len}"),
+        );
         for vpc in vpcs {
+            progress.set_message(vpc.vpc_id.clone().unwrap_or_default());
             let _ = collect_vpc(&client, &vpc, &mut tree).await?;
+            progress.inc(1);
             // println!("{:#?}", resources);
         }
+        progress.finish();
         let tree = tree.build();
         ptree::print_tree(&tree).expect("Failed to print tree");
     }
@@ -119,7 +125,6 @@ async fn collect_vpc(
 ) -> Result<(), ec2::Error> {
     ptree.begin_child(vpc.id_and_name());
     if let Some(ref vpc) = vpc.vpc_id {
-        println!("Checking VPC {}", vpc);
         collect_subnets(client, vpc, ptree).await?;
         collect_internet_gateways(client, vpc, ptree).await?;
         collect_route_tables(client, vpc, ptree).await?;
