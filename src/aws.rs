@@ -84,6 +84,21 @@ pub(super) async fn instances(
     Ok(instances)
 }
 
+pub(super) async fn network_acls(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::NetworkAcl>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let acls = client
+        .describe_network_acls()
+        .filters(vpc)
+        .send()
+        .await?
+        .network_acls
+        .unwrap_or_default();
+    Ok(acls)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)
