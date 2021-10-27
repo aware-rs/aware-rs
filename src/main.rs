@@ -52,10 +52,10 @@ async fn main() -> Result<(), ec2::Error> {
     } else {
         aware.region
     };
-    scrape(regions).await
+    collect(regions).await
 }
 
-async fn scrape(regions: Vec<String>) -> Result<(), ec2::Error> {
+async fn collect(regions: Vec<String>) -> Result<(), ec2::Error> {
     let regioned_clients = regions
         .into_iter()
         .map(ec2::Region::new)
