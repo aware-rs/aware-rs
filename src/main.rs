@@ -12,7 +12,6 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused)]
 #![deny(warnings)]
-#![allow(clippy::needless_lifetimes)]
 
 // #!/bin/bash
 // vpc="vpc-xxxxxxxxxxxxx"
@@ -62,9 +61,6 @@ async fn collect(regions: Vec<String>) -> Result<(), ec2::Error> {
         .map(RegionProviderChain::first_try);
 
     for region in regioned_clients {
-        // let name = region.region().await.unwrap_or_default();
-        // let name = format!("AWS Region {}", name);
-
         let shared_config = aws_config::from_env().region(region).load().await;
         let name = format!("AWS Region {:?}", shared_config.region().id_and_name());
         let mut tree = ptree::TreeBuilder::new(name);
@@ -78,7 +74,6 @@ async fn collect(regions: Vec<String>) -> Result<(), ec2::Error> {
             progress.set_message(vpc.vpc_id.clone().unwrap_or_default());
             let _ = collect_vpc(&client, &vpc, &mut tree).await?;
             progress.inc(1);
-            // println!("{:#?}", resources);
         }
         progress.finish();
         let tree = tree.build();
@@ -126,11 +121,9 @@ async fn collect_vpc(
     ptree.begin_child(vpc.id_and_name());
     if let Some(ref vpc) = vpc.vpc_id {
         collect_subnets(client, vpc, ptree).await?;
+        collect_instances(client, vpc, ptree).await?;
         collect_internet_gateways(client, vpc, ptree).await?;
         collect_route_tables(client, vpc, ptree).await?;
-
-        // let route_tables = get_all_route_tables_from_vpc(client, vpc).await?;
-        // resources.extend(route_tables);
 
         // let network_acls = get_all_network_acls_from_vpc(client, vpc).await?;
         // resources.extend(network_acls);
@@ -146,9 +139,6 @@ async fn collect_vpc(
 
         // let security_groups = get_all_security_groups_from_vpc(client, vpc).await?;
         // resources.extend(security_groups);
-
-        // let instances = get_all_instances_from_vpc(client, vpc).await?;
-        // resources.extend(instances);
 
         // let vpn_connections = get_all_vpn_connections_from_vpc(client, vpc).await?;
         // resources.extend(vpn_connections);
@@ -232,8 +222,36 @@ async fn collect_route_tables(
         .route_tables
         .unwrap_or_default()
         .into_iter()
-        .for_each(|subnet| {
-            ptree.add_empty_child(subnet.id_and_name());
+        .for_each(|table| {
+            ptree.add_empty_child(table.id_and_name());
+        });
+
+    ptree.end_child();
+
+    Ok(())
+}
+
+async fn collect_instances(
+    client: &ec2::Client,
+    vpc: &str,
+    ptree: &mut ptree::TreeBuilder,
+) -> Result<(), ec2::Error> {
+    ptree.begin_child("Instances".to_string());
+    let vpc = ec2::model::Filter::builder()
+        .name("vpc-id")
+        .values(vpc)
+        .build();
+    client
+        .describe_instances()
+        .filters(vpc)
+        .send()
+        .await?
+        .reservations
+        .unwrap_or_default()
+        .into_iter()
+        .flat_map(|reservation| reservation.instances.unwrap_or_default())
+        .for_each(|instance| {
+            ptree.add_empty_child(instance.id_and_name());
         });
 
     ptree.end_child();
