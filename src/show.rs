@@ -4,6 +4,12 @@ pub(crate) trait Show {
     fn id_and_name(&self) -> String;
 }
 
+impl Show for Option<&ec2::Region> {
+    fn id_and_name(&self) -> String {
+        self.map(ToString::to_string).unwrap_or_default()
+    }
+}
+
 impl Show for ec2::model::Vpc {
     fn id_and_name(&self) -> String {
         let name = get_name_tag_if_any(&self.tags)
@@ -23,6 +29,19 @@ impl Show for ec2::model::InternetGateway {
             .map(|name| format!(" ({})", name))
             .unwrap_or_default();
         if let Some(ref id) = self.internet_gateway_id {
+            format!("{}{}", id, name)
+        } else {
+            name
+        }
+    }
+}
+
+impl Show for ec2::model::Subnet {
+    fn id_and_name(&self) -> String {
+        let name = get_name_tag_if_any(&self.tags)
+            .map(|name| format!(" ({})", name))
+            .unwrap_or_default();
+        if let Some(ref id) = self.subnet_id {
             format!("{}{}", id, name)
         } else {
             name

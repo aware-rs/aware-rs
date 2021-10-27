@@ -12,6 +12,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused)]
 #![deny(warnings)]
+#![allow(clippy::needless_lifetimes)]
 
 // #!/bin/bash
 // vpc="vpc-xxxxxxxxxxxxx"
@@ -61,16 +62,21 @@ async fn scrape(regions: Vec<String>) -> Result<(), ec2::Error> {
         .map(RegionProviderChain::first_try);
 
     for region in regioned_clients {
-        println!("{:#?}", region.region().await);
-        let config = aws_config::from_env().region(region).load().await;
-        let client = ec2::Client::new(&config);
+        // let name = region.region().await.unwrap_or_default();
+        // let name = format!("AWS Region {}", name);
+
+        let shared_config = aws_config::from_env().region(region).load().await;
+        let name = format!("AWS Region {:?}", shared_config.region().id_and_name());
+        let mut tree = ptree::TreeBuilder::new(name);
+        let client = ec2::Client::new(&shared_config);
 
         let vpcs = get_all_vpc_from_region(&client).await?;
         for vpc in vpcs {
-            println!("{}", vpc.id_and_name());
-            let resources = scrape_vpc(&client, &vpc).await?;
-            println!("{:#?}", resources);
+            let _ = scrape_vpc(&client, &vpc, &mut tree).await?;
+            // println!("{:#?}", resources);
         }
+        let tree = tree.build();
+        ptree::print_tree(&tree).expect("Failed to print tree");
     }
 
     Ok(())
@@ -109,15 +115,13 @@ async fn get_all_vpc_from_region(client: &ec2::Client) -> Result<Vec<ec2::model:
 async fn scrape_vpc(
     client: &ec2::Client,
     vpc: &ec2::model::Vpc,
-) -> Result<Vec<String>, ec2::Error> {
-    let mut resources = vec![];
-
+    ptree: &mut ptree::TreeBuilder,
+) -> Result<(), ec2::Error> {
+    ptree.begin_child(vpc.id_and_name());
     if let Some(ref vpc) = vpc.vpc_id {
-        let internet_gateways = scrape_internet_gateways(client, vpc).await?;
-        resources.extend(internet_gateways);
-
-        // let subnets = get_all_subnets_from_vpc(client, vpc).await?;
-        // resources.extend(subnets);
+        println!("Scraping VPC {}", vpc);
+        scrape_subnets(client, vpc, ptree).await?;
+        scrape_internet_gateways(client, vpc, ptree).await?;
 
         // let route_tables = get_all_route_tables_from_vpc(client, vpc).await?;
         // resources.extend(route_tables);
@@ -146,19 +150,21 @@ async fn scrape_vpc(
         // let vpn_gateways = get_all_vpn_gateways_from_vpc(client, &vpc).await?;
         // resources.extend(vpn_gateways);
     }
-
-    Ok(resources)
+    ptree.end_child();
+    Ok(())
 }
 
 async fn scrape_internet_gateways(
     client: &ec2::Client,
     vpc: &str,
-) -> Result<Vec<String>, ec2::Error> {
+    ptree: &mut ptree::TreeBuilder,
+) -> Result<(), ec2::Error> {
+    ptree.begin_child("Internet Gateways".to_string());
     let vpc = ec2::model::Filter::builder()
         .name("attachment.vpc-id")
         .values(vpc)
         .build();
-    let igw = client
+    client
         .describe_internet_gateways()
         .filters(vpc)
         .send()
@@ -166,7 +172,38 @@ async fn scrape_internet_gateways(
         .internet_gateways
         .unwrap_or_default()
         .into_iter()
-        .map(|igw| igw.id_and_name())
-        .collect();
-    Ok(igw)
+        .for_each(|igw| {
+            ptree.add_empty_child(igw.id_and_name());
+        });
+
+    ptree.end_child();
+
+    Ok(())
+}
+
+async fn scrape_subnets(
+    client: &ec2::Client,
+    vpc: &str,
+    ptree: &mut ptree::TreeBuilder,
+) -> Result<(), ec2::Error> {
+    ptree.begin_child("Subnets".to_string());
+    let vpc = ec2::model::Filter::builder()
+        .name("vpc-id")
+        .values(vpc)
+        .build();
+    client
+        .describe_subnets()
+        .filters(vpc)
+        .send()
+        .await?
+        .subnets
+        .unwrap_or_default()
+        .into_iter()
+        .for_each(|subnet| {
+            ptree.add_empty_child(subnet.id_and_name());
+        });
+
+    ptree.end_child();
+
+    Ok(())
 }
