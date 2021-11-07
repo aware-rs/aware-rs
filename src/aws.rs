@@ -174,6 +174,21 @@ pub(super) async fn vpn_connections(
     Ok(vpn_connections)
 }
 
+pub(super) async fn vpn_gateways(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::VpnGateway>, ec2::Error> {
+    let vpc = filter("attachment.vpc-id", vpc);
+    let vpn_gateways = client
+        .describe_vpn_gateways()
+        .filters(vpc)
+        .send()
+        .await?
+        .vpn_gateways
+        .unwrap_or_default();
+    Ok(vpn_gateways)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)

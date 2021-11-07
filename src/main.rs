@@ -133,10 +133,9 @@ async fn collect_vpc(
         collect!(aws::nat_gateways, "NAT Gateways");
         collect!(aws::security_groups, "Security Groups");
         collect!(aws::vpn_connections, "VPN Connections");
-
-        // let vpn_gateways = get_all_vpn_gateways_from_vpc(client, &vpc).await?;
-        // resources.extend(vpn_gateways);
+        collect!(aws::vpn_gateways, "VPN Gateways");
     }
+
     ptree.end_child();
     Ok(())
 }

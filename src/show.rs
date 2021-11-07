@@ -132,6 +132,16 @@ impl Show for ec2::model::VpnConnection {
     }
 }
 
+impl Show for ec2::model::VpnGateway {
+    fn id(&self) -> String {
+        self.vpn_gateway_id.clone().unwrap_or_default()
+    }
+
+    fn tags(&self) -> &Option<Vec<ec2::model::Tag>> {
+        &self.tags
+    }
+}
+
 fn format_name(tags: &Option<Vec<ec2::model::Tag>>) -> String {
     get_name_tag_if_any(tags)
         .map(|name| format!(" ({})", name))
