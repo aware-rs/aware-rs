@@ -134,6 +134,7 @@ async fn collect_vpc(
         collect!(aws::security_groups, "Security Groups");
         collect!(aws::vpn_connections, "VPN Connections");
         collect!(aws::vpn_gateways, "VPN Gateways");
+        collect!(aws::network_interfaces, "Network Interfaces");
     }
 
     ptree.end_child();

@@ -189,6 +189,21 @@ pub(super) async fn vpn_gateways(
     Ok(vpn_gateways)
 }
 
+pub(super) async fn network_interfaces(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::NetworkInterface>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let ifaces = client
+        .describe_network_interfaces()
+        .filters(vpc)
+        .send()
+        .await?
+        .network_interfaces
+        .unwrap_or_default();
+    Ok(ifaces)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)
