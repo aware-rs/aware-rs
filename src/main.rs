@@ -131,9 +131,7 @@ async fn collect_vpc(
         collect!(aws::vpc_peering_connections, "VPC Peering Connections");
         collect!(aws::vpc_endpoints, "VPC Endpoints");
         collect!(aws::nat_gateways, "NAT Gateways");
-
-        // let security_groups = get_all_security_groups_from_vpc(client, vpc).await?;
-        // resources.extend(security_groups);
+        collect!(aws::security_groups, "Security Groups");
 
         // let vpn_connections = get_all_vpn_connections_from_vpc(client, vpc).await?;
         // resources.extend(vpn_connections);

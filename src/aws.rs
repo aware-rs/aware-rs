@@ -144,6 +144,21 @@ pub(super) async fn nat_gateways(
     Ok(gateways)
 }
 
+pub(super) async fn security_groups(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::SecurityGroup>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let sgroups = client
+        .describe_security_groups()
+        .filters(vpc)
+        .send()
+        .await?
+        .security_groups
+        .unwrap_or_default();
+    Ok(sgroups)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)

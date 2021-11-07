@@ -112,6 +112,16 @@ impl Show for ec2::model::NatGateway {
     }
 }
 
+impl Show for ec2::model::SecurityGroup {
+    fn id(&self) -> String {
+        self.group_id.clone().unwrap_or_default()
+    }
+
+    fn tags(&self) -> &Option<Vec<ec2::model::Tag>> {
+        &self.tags
+    }
+}
+
 fn format_name(tags: &Option<Vec<ec2::model::Tag>>) -> String {
     get_name_tag_if_any(tags)
         .map(|name| format!(" ({})", name))
