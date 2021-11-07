@@ -159,6 +159,21 @@ pub(super) async fn security_groups(
     Ok(sgroups)
 }
 
+pub(super) async fn vpn_connections(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::VpnConnection>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let vpn_connections = client
+        .describe_vpn_connections()
+        .filters(vpc)
+        .send()
+        .await?
+        .vpn_connections
+        .unwrap_or_default();
+    Ok(vpn_connections)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)
