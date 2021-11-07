@@ -129,6 +129,21 @@ pub(super) async fn vpc_endpoints(
     Ok(endpoints)
 }
 
+pub(super) async fn nat_gateways(
+    client: &ec2::Client,
+    vpc: &str,
+) -> Result<Vec<ec2::model::NatGateway>, ec2::Error> {
+    let vpc = filter("vpc-id", vpc);
+    let gateways = client
+        .describe_nat_gateways()
+        .filter(vpc)
+        .send()
+        .await?
+        .nat_gateways
+        .unwrap_or_default();
+    Ok(gateways)
+}
+
 fn filter(key: &str, value: &str) -> ec2::model::Filter {
     ec2::model::Filter::builder()
         .name(key)

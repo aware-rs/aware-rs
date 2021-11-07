@@ -102,6 +102,16 @@ impl Show for ec2::model::VpcEndpoint {
     }
 }
 
+impl Show for ec2::model::NatGateway {
+    fn id(&self) -> String {
+        self.nat_gateway_id.clone().unwrap_or_default()
+    }
+
+    fn tags(&self) -> &Option<Vec<ec2::model::Tag>> {
+        &self.tags
+    }
+}
+
 fn format_name(tags: &Option<Vec<ec2::model::Tag>>) -> String {
     get_name_tag_if_any(tags)
         .map(|name| format!(" ({})", name))

@@ -130,9 +130,7 @@ async fn collect_vpc(
         collect!(aws::network_acls, "Network ACLs");
         collect!(aws::vpc_peering_connections, "VPC Peering Connections");
         collect!(aws::vpc_endpoints, "VPC Endpoints");
-
-        // let nat_gateways = get_all_nat_gateways_from_vpc(client, vpc).await?;
-        // resources.extend(nat_gateways);
+        collect!(aws::nat_gateways, "NAT Gateways");
 
         // let security_groups = get_all_security_groups_from_vpc(client, vpc).await?;
         // resources.extend(security_groups);
