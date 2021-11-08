@@ -90,12 +90,14 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
 
         let mut tree = ptree::TreeBuilder::new(region);
         let progress = indicatif::ProgressBar::new(vpcs.len() as u64).with_style(
-            indicatif::ProgressStyle::default_bar().template("{msg} {wide_bar} {pos}/{len}"),
+            indicatif::ProgressStyle::default_bar().template(
+                "[{pos}/{len} {prefix}] {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
+            ),
         );
 
         for vpc in vpcs {
-            progress.set_message(vpc.id());
-            collect_vpc(&client, &vpc, &mut tree).await?;
+            progress.set_prefix(vpc.id());
+            collect_vpc(&client, &vpc, &progress, &mut tree).await?;
             progress.inc(1);
         }
 
@@ -110,6 +112,7 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
 async fn collect_vpc(
     client: &ec2::Client,
     vpc: &ec2::model::Vpc,
+    progress: &indicatif::ProgressBar,
     ptree: &mut ptree::TreeBuilder,
 ) -> Result<(), ec2::Error> {
     ptree.begin_child(vpc.id_and_name());
@@ -117,6 +120,7 @@ async fn collect_vpc(
     if let Some(ref vpc) = vpc.vpc_id {
         macro_rules! collect {
             ($collector:path, $title:expr) => {{
+                progress.set_message($title);
                 $collector(client, vpc)
                     .await
                     .map(|resources| add_children(ptree, $title, resources))?

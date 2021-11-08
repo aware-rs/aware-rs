@@ -12,12 +12,31 @@ pub(super) async fn regions(client: &ec2::Client) -> Result<Vec<ec2::model::Regi
 }
 
 pub(super) async fn vpcs(client: &ec2::Client) -> Result<Vec<ec2::model::Vpc>, ec2::Error> {
-    let vpcs = client
-        .describe_vpcs()
-        .send()
-        .await?
-        .vpcs
-        .unwrap_or_default();
+    let mut output = client.describe_vpcs().send().await?;
+    let mut vpcs = output.vpcs.unwrap_or_default();
+    let mut next_token = output.next_token;
+
+    while let Some(token) = next_token {
+        output = client.describe_vpcs().next_token(token).send().await?;
+        vpcs.extend(output.vpcs.unwrap_or_default());
+        next_token = output.next_token;
+    }
+
+    // let mut vpcs = vec![];
+    // let mut next_token = None;
+    // loop {
+    //     let output = client
+    //         .describe_vpcs()
+    //         .set_next_token(next_token)
+    //         .send()
+    //         .await?;
+    //     vpcs.extend(output.vpcs.unwrap_or_default());
+    //     next_token = output.next_token;
+    //     if next_token.is_none() {
+    //         break;
+    //     }
+    // }
+
     Ok(vpcs)
 }
 
