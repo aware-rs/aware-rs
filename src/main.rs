@@ -81,7 +81,16 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
         let region = format!("AWS Region {:?}", shared_config.region().id_and_name());
         let client = ec2::Client::new(&shared_config);
 
+        let progress = indicatif::ProgressBar::new(1).with_style(
+            indicatif::ProgressStyle::default_bar().template(
+                "[{pos}/{len} {prefix}] {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
+            ),
+        );
+        progress.set_prefix(region.clone());
+        progress.set_message("Collecting VPCs");
         let vpcs = aws::vpcs(&client).await?;
+        progress.inc(1);
+
         let vpcs = if vpc.is_empty() {
             vpcs
         } else {
@@ -89,11 +98,7 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
         };
 
         let mut tree = ptree::TreeBuilder::new(region);
-        let progress = indicatif::ProgressBar::new(vpcs.len() as u64).with_style(
-            indicatif::ProgressStyle::default_bar().template(
-                "[{pos}/{len} {prefix}] {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
-            ),
-        );
+        progress.set_length(vpcs.len() as u64);
 
         for vpc in vpcs {
             progress.set_prefix(vpc.id());
