@@ -87,66 +87,39 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
             ),
         );
         progress.set_prefix(region.clone());
+        let mut aws = aws::AwsResources::new(client);
         progress.set_message("Collecting VPCs");
-        let vpcs = aws::vpcs(&client).await?;
+        aws.collect_vpcs(&vpc).await?;
         progress.inc(1);
 
-        let vpcs = if vpc.is_empty() {
-            vpcs
-        } else {
-            vpcs.into_iter().filter(|v| vpc.contains(&v.id())).collect()
-        };
-
-        let mut tree = ptree::TreeBuilder::new(region);
-        progress.set_length(vpcs.len() as u64);
-
-        for vpc in vpcs {
-            progress.set_prefix(vpc.id());
-            collect_vpc(&client, &vpc, &progress, &mut tree).await?;
-            progress.inc(1);
-        }
+        aws.collect(&progress).await?;
 
         progress.finish();
-        let tree = tree.build();
-        ptree::print_tree(&tree).expect("Failed to print tree");
-    }
 
-    Ok(())
-}
+        let mut trees = vec![];
+        for vpc in aws.vpcs().iter().filter_map(|vpc| vpc.vpc_id()) {
+            let mut tree = ptree::TreeBuilder::new(vpc.to_string());
+            add_children(&mut tree, "Subnets", aws.subnets(vpc));
+            add_children(&mut tree, "Instances", aws.instances(vpc));
+            add_children(&mut tree, "Internet Gateways", aws.internet_gateways(vpc));
+            add_children(&mut tree, "Route Tables", aws.route_tables(vpc));
+            add_children(&mut tree, "Network ACLs", aws.network_acls(vpc));
+            add_children(&mut tree, "VPC Peering Connections", aws.vpc_peerings(vpc));
+            add_children(&mut tree, "VPC Endpoints", aws.vpc_endpoints(vpc));
+            add_children(&mut tree, "NAT Gateways", aws.nat_gateways(vpc));
+            add_children(&mut tree, "Security Groups", aws.security_groups(vpc));
+            add_children(&mut tree, "VPN Connections", aws.vpn_connections(vpc));
+            add_children(&mut tree, "VPN Gateways", aws.vpn_gateways(vpc));
+            add_children(&mut tree, "Network Interfaces", aws.network_interfaces(vpc));
 
-async fn collect_vpc(
-    client: &ec2::Client,
-    vpc: &ec2::model::Vpc,
-    progress: &indicatif::ProgressBar,
-    ptree: &mut ptree::TreeBuilder,
-) -> Result<(), ec2::Error> {
-    ptree.begin_child(vpc.id_and_name());
-
-    if let Some(ref vpc) = vpc.vpc_id {
-        macro_rules! collect {
-            ($collector:path, $title:expr) => {{
-                progress.set_message($title);
-                $collector(client, vpc)
-                    .await
-                    .map(|resources| add_children(ptree, $title, resources))?
-            }};
+            trees.push(tree.build())
         }
 
-        collect!(aws::subnets, "Subnets");
-        collect!(aws::instances, "Instances");
-        collect!(aws::internet_gateways, "Internet Gateway");
-        collect!(aws::route_tables, "Route Tables");
-        collect!(aws::network_acls, "Network ACLs");
-        collect!(aws::vpc_peering_connections, "VPC Peering Connections");
-        collect!(aws::vpc_endpoints, "VPC Endpoints");
-        collect!(aws::nat_gateways, "NAT Gateways");
-        collect!(aws::security_groups, "Security Groups");
-        collect!(aws::vpn_connections, "VPN Connections");
-        collect!(aws::vpn_gateways, "VPN Gateways");
-        collect!(aws::network_interfaces, "Network Interfaces");
+        trees
+            .into_iter()
+            .for_each(|tree| ptree::print_tree(&tree).expect("Failed to print tree"));
     }
 
-    ptree.end_child();
     Ok(())
 }
 

@@ -50,7 +50,7 @@ impl Show for ec2::model::Vpc {
     }
 }
 
-impl Show for ec2::model::InternetGateway {
+impl Show for &ec2::model::InternetGateway {
     fn id(&self) -> String {
         self.internet_gateway_id.clone().unwrap_or_default()
     }
@@ -60,7 +60,7 @@ impl Show for ec2::model::InternetGateway {
     }
 }
 
-impl Show for ec2::model::Subnet {
+impl Show for &ec2::model::Subnet {
     fn id(&self) -> String {
         self.subnet_id.clone().unwrap_or_default()
     }
@@ -70,7 +70,7 @@ impl Show for ec2::model::Subnet {
     }
 }
 
-impl Show for ec2::model::RouteTable {
+impl Show for &ec2::model::RouteTable {
     fn id(&self) -> String {
         self.route_table_id.clone().unwrap_or_default()
     }
@@ -80,7 +80,7 @@ impl Show for ec2::model::RouteTable {
     }
 }
 
-impl Show for ec2::model::Instance {
+impl Show for &ec2::model::Instance {
     fn id(&self) -> String {
         self.instance_id.clone().unwrap_or_default()
     }
@@ -90,7 +90,7 @@ impl Show for ec2::model::Instance {
     }
 }
 
-impl Show for ec2::model::NetworkAcl {
+impl Show for &ec2::model::NetworkAcl {
     fn id(&self) -> String {
         self.network_acl_id.clone().unwrap_or_default()
     }
@@ -100,7 +100,7 @@ impl Show for ec2::model::NetworkAcl {
     }
 }
 
-impl Show for ec2::model::VpcPeeringConnection {
+impl Show for &ec2::model::VpcPeeringConnection {
     fn id(&self) -> String {
         self.vpc_peering_connection_id.clone().unwrap_or_default()
     }
@@ -110,7 +110,7 @@ impl Show for ec2::model::VpcPeeringConnection {
     }
 }
 
-impl Show for ec2::model::VpcEndpoint {
+impl Show for &ec2::model::VpcEndpoint {
     fn id(&self) -> String {
         self.vpc_endpoint_id.clone().unwrap_or_default()
     }
@@ -120,7 +120,7 @@ impl Show for ec2::model::VpcEndpoint {
     }
 }
 
-impl Show for ec2::model::NatGateway {
+impl Show for &ec2::model::NatGateway {
     fn id(&self) -> String {
         self.nat_gateway_id.clone().unwrap_or_default()
     }
@@ -130,7 +130,7 @@ impl Show for ec2::model::NatGateway {
     }
 }
 
-impl Show for ec2::model::SecurityGroup {
+impl Show for &ec2::model::SecurityGroup {
     fn id(&self) -> String {
         self.group_id.clone().unwrap_or_default()
     }
@@ -144,7 +144,7 @@ impl Show for ec2::model::SecurityGroup {
     }
 }
 
-impl Show for ec2::model::VpnConnection {
+impl Show for &ec2::model::VpnConnection {
     fn id(&self) -> String {
         self.vpn_connection_id.clone().unwrap_or_default()
     }
@@ -154,7 +154,7 @@ impl Show for ec2::model::VpnConnection {
     }
 }
 
-impl Show for ec2::model::VpnGateway {
+impl Show for &ec2::model::VpnGateway {
     fn id(&self) -> String {
         self.vpn_gateway_id.clone().unwrap_or_default()
     }
@@ -164,7 +164,7 @@ impl Show for ec2::model::VpnGateway {
     }
 }
 
-impl Show for ec2::model::NetworkInterface {
+impl Show for &ec2::model::NetworkInterface {
     fn id(&self) -> String {
         self.network_interface_id.clone().unwrap_or_default()
     }
