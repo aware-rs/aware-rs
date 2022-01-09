@@ -7,8 +7,8 @@ repository = "https://gitlab.com/imp/aware-rs"
 description = "AWS Resource Explorer"
 
 [dependencies]
-aws-config = "0.3.0"
-aws-sdk-ec2 = "0.3.0"
+aws-config = "0.4"
+aws-sdk-ec2 = "0.4"
 indicatif = "0.16"
 ptree = "0.4"
 structopt = "0.3"
