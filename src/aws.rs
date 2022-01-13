@@ -75,97 +75,124 @@ impl AwsResources {
         &self.vpcs
     }
 
-    pub(crate) fn subnets(&self, vpc_id: &str) -> Vec<&ec2::model::Subnet> {
+    pub(crate) fn subnets(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Subnet> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.subnets
             .iter()
-            .filter(|subnet| subnet.vpc_id() == Some(vpc_id))
+            .filter(|subnet| subnet.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn instances(&self, vpc_id: &str) -> Vec<&ec2::model::Instance> {
+    pub(crate) fn instances(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Instance> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.instances
             .iter()
-            .filter(|instance| instance.vpc_id() == Some(vpc_id))
+            .filter(|instance| instance.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn internet_gateways(&self, vpc_id: &str) -> Vec<&ec2::model::InternetGateway> {
+    pub(crate) fn internet_gateways(
+        &self,
+        vpc_id: impl AsRef<str>,
+    ) -> Vec<&ec2::model::InternetGateway> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.internet_gateways
             .iter()
             .filter(|igw| {
                 igw.attachments()
                     .unwrap_or_default()
                     .iter()
-                    .any(|attachment| attachment.vpc_id() == Some(vpc_id))
+                    .any(|attachment| attachment.vpc_id() == vpc_id)
             })
             .collect()
     }
 
-    pub(crate) fn route_tables(&self, vpc_id: &str) -> Vec<&ec2::model::RouteTable> {
+    pub(crate) fn route_tables(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::RouteTable> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.route_tables
             .iter()
-            .filter(|rt| rt.vpc_id() == Some(vpc_id))
+            .filter(|rt| rt.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn network_acls(&self, vpc_id: &str) -> Vec<&ec2::model::NetworkAcl> {
+    pub(crate) fn network_acls(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NetworkAcl> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.network_acls
             .iter()
-            .filter(|nacl| nacl.vpc_id() == Some(vpc_id))
+            .filter(|nacl| nacl.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn vpc_peerings(&self, vpc_id: &str) -> Vec<&ec2::model::VpcPeeringConnection> {
+    pub(crate) fn vpc_peerings(
+        &self,
+        vpc_id: impl AsRef<str>,
+    ) -> Vec<&ec2::model::VpcPeeringConnection> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.vpc_peerings
             .iter()
             .filter(|vpc_peering| {
                 vpc_peering
                     .requester_vpc_info()
-                    .map(|info| info.vpc_id() == Some(vpc_id))
+                    .map(|info| info.vpc_id() == vpc_id)
                     .unwrap_or_default()
             })
             .collect()
     }
 
-    pub(crate) fn vpc_endpoints(&self, vpc_id: &str) -> Vec<&ec2::model::VpcEndpoint> {
+    pub(crate) fn vpc_endpoints(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpcEndpoint> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.vpc_endpoints
             .iter()
-            .filter(|vpc_endpoint| vpc_endpoint.vpc_id() == Some(vpc_id))
+            .filter(|vpc_endpoint| vpc_endpoint.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn nat_gateways(&self, vpc_id: &str) -> Vec<&ec2::model::NatGateway> {
+    pub(crate) fn nat_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NatGateway> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.nat_gateways
             .iter()
-            .filter(|nat_gateway| nat_gateway.vpc_id() == Some(vpc_id))
+            .filter(|nat_gateway| nat_gateway.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn security_groups(&self, vpc_id: &str) -> Vec<&ec2::model::SecurityGroup> {
+    pub(crate) fn security_groups(
+        &self,
+        vpc_id: impl AsRef<str>,
+    ) -> Vec<&ec2::model::SecurityGroup> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.security_groups
             .iter()
-            .filter(|security_group| security_group.vpc_id() == Some(vpc_id))
+            .filter(|security_group| security_group.vpc_id() == vpc_id)
             .collect()
     }
 
-    pub(crate) fn vpn_connections(&self, _vpc_id: &str) -> Vec<&ec2::model::VpnConnection> {
+    pub(crate) fn vpn_connections(
+        &self,
+        _vpc_id: impl AsRef<str>,
+    ) -> Vec<&ec2::model::VpnConnection> {
+        // let vpc_id = Some(vpc_id.as_ref());
         self.vpn_connections
             .iter()
             // .filter(|vpn_connection| vpn_connection.vpc_id() == Some(vpc_id))
             .collect()
     }
 
-    pub(crate) fn vpn_gateways(&self, _vpc_id: &str) -> Vec<&ec2::model::VpnGateway> {
+    pub(crate) fn vpn_gateways(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpnGateway> {
+        // let vpc_id = Some(vpc_id.as_ref());
         self.vpn_gateways
             .iter()
             // .filter(|vpn_gateway| vpn_gateway.vpc_id() == Some(vpc_id))
             .collect()
     }
 
-    pub(crate) fn network_interfaces(&self, vpc_id: &str) -> Vec<&ec2::model::NetworkInterface> {
+    pub(crate) fn network_interfaces(
+        &self,
+        vpc_id: impl AsRef<str>,
+    ) -> Vec<&ec2::model::NetworkInterface> {
+        let vpc_id = Some(vpc_id.as_ref());
         self.network_interfaces
             .iter()
-            .filter(|network_interface| network_interface.vpc_id() == Some(vpc_id))
+            .filter(|network_interface| network_interface.vpc_id() == vpc_id)
             .collect()
     }
 

@@ -97,20 +97,34 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
         progress.finish();
 
         let mut trees = vec![];
-        for vpc in aws.vpcs().iter().filter_map(|vpc| vpc.vpc_id()) {
-            let mut tree = ptree::TreeBuilder::new(vpc.to_string());
-            add_children(&mut tree, "Subnets", aws.subnets(vpc));
-            add_children(&mut tree, "Instances", aws.instances(vpc));
-            add_children(&mut tree, "Internet Gateways", aws.internet_gateways(vpc));
-            add_children(&mut tree, "Route Tables", aws.route_tables(vpc));
-            add_children(&mut tree, "Network ACLs", aws.network_acls(vpc));
-            add_children(&mut tree, "VPC Peering Connections", aws.vpc_peerings(vpc));
-            add_children(&mut tree, "VPC Endpoints", aws.vpc_endpoints(vpc));
-            add_children(&mut tree, "NAT Gateways", aws.nat_gateways(vpc));
-            add_children(&mut tree, "Security Groups", aws.security_groups(vpc));
-            add_children(&mut tree, "VPN Connections", aws.vpn_connections(vpc));
-            add_children(&mut tree, "VPN Gateways", aws.vpn_gateways(vpc));
-            add_children(&mut tree, "Network Interfaces", aws.network_interfaces(vpc));
+        // for vpc in aws.vpcs().iter().filter_map(|vpc| vpc.vpc_id()) {
+        for vpc in aws.vpcs() {
+            let mut tree = ptree::TreeBuilder::new(vpc.id_and_name());
+            let vpc_id = vpc.id();
+            add_children(&mut tree, "Subnets", aws.subnets(&vpc_id));
+            add_children(&mut tree, "Instances", aws.instances(&vpc_id));
+            add_children(
+                &mut tree,
+                "Internet Gateways",
+                aws.internet_gateways(&vpc_id),
+            );
+            add_children(&mut tree, "Route Tables", aws.route_tables(&vpc_id));
+            add_children(&mut tree, "Network ACLs", aws.network_acls(&vpc_id));
+            add_children(
+                &mut tree,
+                "VPC Peering Connections",
+                aws.vpc_peerings(&vpc_id),
+            );
+            add_children(&mut tree, "VPC Endpoints", aws.vpc_endpoints(&vpc_id));
+            add_children(&mut tree, "NAT Gateways", aws.nat_gateways(&vpc_id));
+            add_children(&mut tree, "Security Groups", aws.security_groups(&vpc_id));
+            add_children(&mut tree, "VPN Connections", aws.vpn_connections(&vpc_id));
+            add_children(&mut tree, "VPN Gateways", aws.vpn_gateways(&vpc_id));
+            add_children(
+                &mut tree,
+                "Network Interfaces",
+                aws.network_interfaces(&vpc_id),
+            );
 
             trees.push(tree.build())
         }
