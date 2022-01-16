@@ -39,10 +39,26 @@ mod show;
 
 #[derive(Debug, StructOpt)]
 struct Aware {
-    #[structopt(long, short)]
+    #[structopt(
+        help = "Explore resources from this region / these regions",
+        long,
+        short,
+        global = true
+    )]
     region: Vec<String>,
-    #[structopt(long, short)]
-    vpc: Vec<String>,
+    #[structopt(subcommand)]
+    service: AwsService,
+}
+
+#[derive(Debug, StructOpt)]
+pub(crate) enum AwsService {
+    #[structopt(name = "ec2", about = "Explore EC2 resources")]
+    Ec2 {
+        #[structopt(long, short)]
+        vpc: Vec<String>,
+    },
+    #[structopt(name = "cf", about = "Explore CloudFormation resources")]
+    CloudFormation,
 }
 
 #[tokio::main]
@@ -54,7 +70,11 @@ async fn main() -> Result<(), ec2::Error> {
     } else {
         aware.region
     };
-    collect(regions, aware.vpc).await
+
+    match aware.service {
+        AwsService::Ec2 { vpc } => collect_ec2(regions, vpc).await,
+        AwsService::CloudFormation => todo!(),
+    }
 }
 
 async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
@@ -70,7 +90,7 @@ async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
     Ok(regions)
 }
 
-async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Error> {
+async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Error> {
     let regioned_clients = regions
         .into_iter()
         .map(ec2::Region::new)
