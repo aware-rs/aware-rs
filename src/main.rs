@@ -87,7 +87,7 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
             ),
         );
         progress.set_prefix(region.clone());
-        let mut aws = aws::AwsResources::new(client);
+        let mut aws = aws::Ec2Resources::new(client);
         progress.set_message("Collecting VPCs");
         aws.collect_vpcs(&vpc).await?;
         progress.inc(1);
@@ -108,7 +108,7 @@ async fn collect(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Erro
     Ok(())
 }
 
-fn vpc_tree(aws: &aws::AwsResources, vpc: &ec2::model::Vpc) -> ptree::item::StringItem {
+fn vpc_tree(aws: &aws::Ec2Resources, vpc: &ec2::model::Vpc) -> ptree::item::StringItem {
     let mut tree = ptree::TreeBuilder::new(vpc.id_and_name());
     let tree = &mut tree;
     let vpc_id = vpc.id();

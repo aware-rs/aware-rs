@@ -5,7 +5,7 @@ use impls::Optionally;
 mod impls;
 
 #[derive(Debug)]
-pub(crate) struct AwsResources {
+pub(crate) struct Ec2Resources {
     client: ec2::Client,
     vpcs: Vec<ec2::model::Vpc>,
     subnets: Vec<ec2::model::Subnet>,                      // 1
@@ -22,7 +22,7 @@ pub(crate) struct AwsResources {
     network_interfaces: Vec<ec2::model::NetworkInterface>, // 12
 }
 
-impl AwsResources {
+impl Ec2Resources {
     pub(crate) fn new(client: ec2::Client) -> Self {
         Self {
             client,
