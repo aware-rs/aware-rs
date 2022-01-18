@@ -59,8 +59,10 @@ pub(crate) enum AwsService {
     },
     #[structopt(name = "cf", about = "Explore CloudFormation resources")]
     CloudFormation {
-        #[structopt(long, short)]
+        #[structopt(help = "Filter by given stack name", long)]
         stack: Vec<String>,
+        #[structopt(help = "Filter by given stack status", long)]
+        status: Vec<aws::cf::model::StackStatus>,
     },
 }
 
@@ -76,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
 
     match aware.service {
         AwsService::Ec2 { vpc } => collect_ec2(regions, vpc).await,
-        AwsService::CloudFormation { stack } => collect_cf(regions, stack).await,
+        AwsService::CloudFormation { stack, status } => collect_cf(regions, stack, status).await,
     }
 }
 
@@ -131,11 +133,16 @@ async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> anyhow::Result<(
     Ok(())
 }
 
-async fn collect_cf(regions: Vec<String>, stack: Vec<String>) -> anyhow::Result<()> {
+async fn collect_cf(
+    regions: Vec<String>,
+    stack: Vec<String>,
+    status: Vec<aws::cf::model::StackStatus>,
+) -> anyhow::Result<()> {
     let regioned_clients = regions
         .into_iter()
         .map(ec2::Region::new)
         .map(RegionProviderChain::first_try);
+    let statuses = aws::cf::adjust_stack_statuses(status);
 
     for region in regioned_clients {
         let shared_config = aws_config::from_env().region(region).load().await;
@@ -149,7 +156,7 @@ async fn collect_cf(regions: Vec<String>, stack: Vec<String>) -> anyhow::Result<
         progress.set_prefix(region.clone());
         let mut cf = aws::CfResources::new(&shared_config);
         progress.set_message("Collecting stacks");
-        cf.collect_stacks(&stack).await?;
+        cf.collect_stacks(&stack, &statuses).await?;
         progress.inc(1);
 
         cf.collect_stack_resources(&progress).await?;

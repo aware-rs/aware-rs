@@ -1,5 +1,5 @@
-mod cf;
-mod ec2;
+pub(crate) mod cf;
+pub(crate) mod ec2;
 
 pub(crate) use ec2::regions;
 

@@ -1,11 +1,13 @@
 use aws_sdk_cloudformation as cf;
 use tokio_stream::StreamExt;
 
+pub(crate) use cf::model;
+
 #[derive(Debug)]
 pub(crate) struct CfResources {
     client: cf::Client,
-    stacks: Vec<cf::model::Stack>,
-    resources: Vec<(cf::model::Stack, Vec<cf::model::StackResource>)>,
+    stacks: Vec<model::StackSummary>,
+    resources: Vec<(model::StackSummary, Vec<model::StackResource>)>,
 }
 
 impl CfResources {
@@ -19,10 +21,17 @@ impl CfResources {
         }
     }
 
-    pub(crate) async fn collect_stacks(&mut self, stacks: &[String]) -> Result<(), cf::Error> {
-        self.stacks = self
-            .client
-            .describe_stacks()
+    pub(crate) async fn collect_stacks(
+        &mut self,
+        stacks: &[String],
+        statuses: &[model::StackStatus],
+    ) -> Result<(), cf::Error> {
+        let list_stacks = self.client.list_stacks();
+        self.stacks = statuses
+            .iter()
+            .fold(list_stacks, |list, status| {
+                list.stack_status_filter(status.clone())
+            })
             .into_paginator()
             .items()
             .send()
@@ -44,18 +53,15 @@ impl CfResources {
                 .stack_name()
                 .or_else(|| stack.stack_id())
                 .unwrap_or_default();
+            let id = stack.stack_id().unwrap_or_default();
             progress.set_message(name.to_string());
-            let resources = self.collect_resources(name).await?;
+            let resources = self.collect_resources(id).await?;
             self.resources.push((stack.clone(), resources));
             progress.inc(1);
         }
 
         Ok(())
     }
-
-    // pub(crate) fn stacks(&self) -> &[cf::model::Stack] {
-    //     &self.stacks
-    // }
 
     pub(crate) fn trees(&self) -> impl Iterator<Item = ptree::item::StringItem> + '_ {
         self.resources
@@ -66,7 +72,7 @@ impl CfResources {
     async fn collect_resources(
         &self,
         stack_name: &str,
-    ) -> Result<Vec<cf::model::StackResource>, cf::Error> {
+    ) -> Result<Vec<model::StackResource>, cf::Error> {
         let resources = self
             .client
             .describe_stack_resources()
@@ -90,8 +96,8 @@ impl CfResources {
 }
 
 fn stack_tree(
-    stack: &cf::model::Stack,
-    resources: &[cf::model::StackResource],
+    stack: &model::StackSummary,
+    resources: &[model::StackResource],
 ) -> ptree::item::StringItem {
     let mut tree = ptree::TreeBuilder::new(stack.title());
     add_children(&mut tree, resources);
@@ -99,7 +105,7 @@ fn stack_tree(
 }
 
 fn is_requested(
-    stack: &Result<cf::model::Stack, cf::SdkError<cf::error::DescribeStacksError>>,
+    stack: &Result<model::StackSummary, cf::SdkError<cf::error::ListStacksError>>,
     requested: &[String],
 ) -> bool {
     if let Ok(stack) = stack {
@@ -113,7 +119,7 @@ fn is_requested(
     }
 }
 
-fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[cf::model::StackResource]) {
+fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[model::StackResource]) {
     resources.iter().for_each(|resource| {
         ptree.begin_child(resource.title());
         let r#type = resource.resource_type().unwrap_or("no type");
@@ -123,11 +129,48 @@ fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[cf::model::StackRes
     })
 }
 
+pub(crate) fn adjust_stack_statuses(status: Vec<model::StackStatus>) -> Vec<model::StackStatus> {
+    if status.is_empty() {
+        // If no explicit status has been selected get evereything but successfully deleted
+        vec![
+            model::StackStatus::CreateComplete,
+            model::StackStatus::CreateFailed,
+            model::StackStatus::CreateInProgress,
+            model::StackStatus::DeleteFailed,
+            model::StackStatus::DeleteInProgress,
+            model::StackStatus::ImportComplete,
+            model::StackStatus::ImportInProgress,
+            model::StackStatus::ImportRollbackComplete,
+            model::StackStatus::ImportRollbackFailed,
+            model::StackStatus::ImportRollbackInProgress,
+            model::StackStatus::ReviewInProgress,
+            model::StackStatus::RollbackComplete,
+            model::StackStatus::RollbackFailed,
+            model::StackStatus::RollbackInProgress,
+            model::StackStatus::UpdateComplete,
+            model::StackStatus::UpdateCompleteCleanupInProgress,
+            model::StackStatus::UpdateFailed,
+            model::StackStatus::UpdateInProgress,
+            model::StackStatus::UpdateRollbackComplete,
+            model::StackStatus::UpdateRollbackCompleteCleanupInProgress,
+            model::StackStatus::UpdateRollbackFailed,
+            model::StackStatus::UpdateRollbackInProgress,
+        ]
+    } else if status
+        .iter()
+        .any(|s| matches!(s, model::StackStatus::Unknown(text) if text.to_lowercase() == "all"))
+    {
+        vec![]
+    } else {
+        status
+    }
+}
+
 trait Title {
     fn title(&self) -> String;
 }
 
-impl Title for cf::model::Stack {
+impl Title for model::Stack {
     fn title(&self) -> String {
         let name = self.stack_name().unwrap_or_default();
         if let Some(status) = self.stack_status().map(|status| status.as_str()) {
@@ -138,7 +181,18 @@ impl Title for cf::model::Stack {
     }
 }
 
-impl Title for cf::model::StackResource {
+impl Title for model::StackSummary {
+    fn title(&self) -> String {
+        let name = self.stack_name().unwrap_or_default();
+        if let Some(status) = self.stack_status().map(|status| status.as_str()) {
+            format!("{name} ({status})")
+        } else {
+            name.to_string()
+        }
+    }
+}
+
+impl Title for model::StackResource {
     fn title(&self) -> String {
         let name = self.logical_resource_id().unwrap_or_default();
         if let Some(status) = self.resource_status().map(|status| status.as_str()) {
