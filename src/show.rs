@@ -1,18 +1,18 @@
+use aws_sdk_cloudformation as cf;
 use aws_sdk_ec2 as ec2;
+use duplicate::duplicate;
 
 pub(crate) trait Show {
     fn id(&self) -> String;
 
-    fn tags(&self) -> Option<&[ec2::model::Tag]>;
+    fn tag(&self, key: &str) -> Option<&str>;
 
     fn description(&self) -> Option<&str> {
         None
     }
 
     fn name(&self) -> Option<&str> {
-        self.tags()
-            .and_then(|tags| tags.iter().find(|tag| tag.key.as_deref() == Some("Name")))
-            .and_then(|tag| tag.value.as_deref())
+        self.tag("Name")
     }
 
     fn id_and_name(&self) -> String {
@@ -31,7 +31,7 @@ impl Show for Option<&ec2::Region> {
         self.map(ToString::to_string).unwrap_or_default()
     }
 
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
+    fn tag(&self, _key: &str) -> Option<&str> {
         None
     }
 
@@ -40,93 +40,36 @@ impl Show for Option<&ec2::Region> {
     }
 }
 
-impl Show for ec2::model::Vpc {
+#[duplicate(
+    resource id_accessor;
+    [Vpc] [vpc_id];
+    [InternetGateway] [internet_gateway_id];
+    [Subnet] [subnet_id];
+    [RouteTable] [route_table_id];
+    [Instance] [instance_id];
+    [NetworkAcl] [network_acl_id];
+    [VpcPeeringConnection] [vpc_peering_connection_id];
+    [VpcEndpoint] [vpc_endpoint_id];
+    [NatGateway] [nat_gateway_id];
+    [VpnConnection] [vpn_connection_id];
+    [VpnGateway] [vpn_gateway_id];
+)]
+impl Show for &ec2::model::resource {
     fn id(&self) -> String {
-        self.vpc_id.clone().unwrap_or_default()
+        self.id_accessor().unwrap_or_default().to_string()
     }
 
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::InternetGateway {
-    fn id(&self) -> String {
-        self.internet_gateway_id.clone().unwrap_or_default()
+    fn name(&self) -> Option<&str> {
+        self.tags()
+            .and_then(|tags| tags.iter().find(|tag| tag.key.as_deref() == Some("Name")))
+            .and_then(|tag| tag.value.as_deref())
     }
 
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::Subnet {
-    fn id(&self) -> String {
-        self.subnet_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::RouteTable {
-    fn id(&self) -> String {
-        self.route_table_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::Instance {
-    fn id(&self) -> String {
-        self.instance_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::NetworkAcl {
-    fn id(&self) -> String {
-        self.network_acl_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::VpcPeeringConnection {
-    fn id(&self) -> String {
-        self.vpc_peering_connection_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::VpcEndpoint {
-    fn id(&self) -> String {
-        self.vpc_endpoint_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::NatGateway {
-    fn id(&self) -> String {
-        self.nat_gateway_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
+    fn tag(&self, key: &str) -> Option<&str> {
+        self.tags()?
+            .iter()
+            .find(|tag| tag.key.as_deref() == Some(key))?
+            .value()
     }
 }
 
@@ -139,28 +82,11 @@ impl Show for &ec2::model::SecurityGroup {
         self.description.as_deref()
     }
 
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::VpnConnection {
-    fn id(&self) -> String {
-        self.vpn_connection_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
-    }
-}
-
-impl Show for &ec2::model::VpnGateway {
-    fn id(&self) -> String {
-        self.vpn_gateway_id.clone().unwrap_or_default()
-    }
-
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tags.as_deref()
+    fn tag(&self, key: &str) -> Option<&str> {
+        self.tags()?
+            .iter()
+            .find(|tag| tag.key.as_deref() == Some(key))?
+            .value()
     }
 }
 
@@ -173,7 +99,98 @@ impl Show for &ec2::model::NetworkInterface {
         self.description.as_deref()
     }
 
-    fn tags(&self) -> Option<&[ec2::model::Tag]> {
-        self.tag_set.as_deref()
+    fn tag(&self, key: &str) -> Option<&str> {
+        self.tag_set()?
+            .iter()
+            .find(|tag| tag.key.as_deref() == Some(key))?
+            .value()
+    }
+}
+
+impl Show for &cf::model::Stack {
+    fn id(&self) -> String {
+        self.stack_id().unwrap_or_default().to_string()
+    }
+
+    fn tag(&self, key: &str) -> Option<&str> {
+        self.tags()?
+            .iter()
+            .find(|tag| tag.key.as_deref() == Some(key))?
+            .value()
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.stack_name()
+    }
+}
+
+impl Show for &cf::model::StackResourceSummary {
+    fn id(&self) -> String {
+        self.physical_resource_id().unwrap_or_default().to_string()
+    }
+
+    fn tag(&self, _key: &str) -> Option<&str> {
+        None
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.logical_resource_id()
+    }
+
+    fn id_and_name(&self) -> String {
+        let r#type = self.resource_type().unwrap_or_default();
+        let resource = self.logical_resource_id().unwrap_or("unnamed resource");
+        let id = self.physical_resource_id().unwrap_or_default();
+        let status = self
+            .resource_status()
+            .map_or("no status", |status| status.as_str());
+        format!("{type}: {id} ({resource}) [{status}]",)
+    }
+}
+
+impl Show for cf::model::StackResourceSummary {
+    fn id(&self) -> String {
+        self.physical_resource_id().unwrap_or_default().to_string()
+    }
+
+    fn tag(&self, _key: &str) -> Option<&str> {
+        None
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.logical_resource_id()
+    }
+
+    fn id_and_name(&self) -> String {
+        let r#type = self.resource_type().unwrap_or_default();
+        let resource = self.logical_resource_id().unwrap_or("unnamed resource");
+        let id = self.physical_resource_id().unwrap_or_default();
+        let status = self
+            .resource_status()
+            .map_or("no status", |status| status.as_str());
+        format!("{type}: {id} ({resource}) [{status}]",)
+    }
+}
+
+impl Show for cf::model::StackResource {
+    fn id(&self) -> String {
+        self.physical_resource_id().unwrap_or_default().to_string()
+    }
+
+    fn tag(&self, _key: &str) -> Option<&str> {
+        None
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.logical_resource_id()
+    }
+
+    fn id_and_name(&self) -> String {
+        let resource = self.logical_resource_id().unwrap_or("unnamed resource");
+        let id = self.physical_resource_id().unwrap_or_default();
+        let status = self
+            .resource_status()
+            .map_or("no status", |status| status.as_str());
+        format!("{id} ({resource}) [{status}]",)
     }
 }

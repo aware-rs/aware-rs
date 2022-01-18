@@ -58,11 +58,14 @@ pub(crate) enum AwsService {
         vpc: Vec<String>,
     },
     #[structopt(name = "cf", about = "Explore CloudFormation resources")]
-    CloudFormation,
+    CloudFormation {
+        #[structopt(long, short)]
+        stack: Vec<String>,
+    },
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ec2::Error> {
+async fn main() -> anyhow::Result<()> {
     let aware = Aware::from_args();
 
     let regions = if aware.region.is_empty() {
@@ -73,7 +76,7 @@ async fn main() -> Result<(), ec2::Error> {
 
     match aware.service {
         AwsService::Ec2 { vpc } => collect_ec2(regions, vpc).await,
-        AwsService::CloudFormation => todo!(),
+        AwsService::CloudFormation { stack } => collect_cf(regions, stack).await,
     }
 }
 
@@ -90,7 +93,7 @@ async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
     Ok(regions)
 }
 
-async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::Error> {
+async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> anyhow::Result<()> {
     let regioned_clients = regions
         .into_iter()
         .map(ec2::Region::new)
@@ -123,6 +126,40 @@ async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> Result<(), ec2::
                 println!();
                 ptree::print_tree(&tree).expect("Failed to print tree");
             });
+    }
+
+    Ok(())
+}
+
+async fn collect_cf(regions: Vec<String>, stack: Vec<String>) -> anyhow::Result<()> {
+    let regioned_clients = regions
+        .into_iter()
+        .map(ec2::Region::new)
+        .map(RegionProviderChain::first_try);
+
+    for region in regioned_clients {
+        let shared_config = aws_config::from_env().region(region).load().await;
+        let region = format!("AWS Region {:?}", shared_config.region().id_and_name());
+        // let client = cf::Client::new(&shared_config);
+
+        let progress = indicatif::ProgressBar::new(1)
+            .with_style(indicatif::ProgressStyle::default_bar().template(
+            "[{pos:>3}/{len:>3} {prefix}] {msg:24!} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
+        ));
+        progress.set_prefix(region.clone());
+        let mut cf = aws::CfResources::new(&shared_config);
+        progress.set_message("Collecting stacks");
+        cf.collect_stacks(&stack).await?;
+        progress.inc(1);
+
+        cf.collect_stack_resources(&progress).await?;
+
+        progress.finish();
+
+        cf.trees().for_each(|tree| {
+            println!();
+            ptree::print_tree(&tree).expect("Failed to print tree");
+        });
     }
 
     Ok(())
