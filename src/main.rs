@@ -112,22 +112,19 @@ async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> anyhow::Result<(
             ),
         );
         progress.set_prefix(region.clone());
-        let mut aws = aws::Ec2Resources::new(client);
+        let mut ec2 = aws::Ec2Resources::new(client);
         progress.set_message("Collecting VPCs");
-        aws.collect_vpcs(&vpc).await?;
+        ec2.collect_vpcs(&vpc).await?;
         progress.inc(1);
 
-        aws.collect(&progress).await?;
+        ec2.collect(&progress).await?;
 
         progress.finish();
 
-        aws.vpcs()
-            .iter()
-            .map(|vpc| vpc_tree(&aws, vpc))
-            .for_each(|tree| {
-                println!();
-                ptree::print_tree(&tree).expect("Failed to print tree");
-            });
+        ec2.trees().for_each(|tree| {
+            println!();
+            ptree::print_tree(&tree).expect("Failed to print tree");
+        });
     }
 
     Ok(())
@@ -170,33 +167,4 @@ async fn collect_cf(
     }
 
     Ok(())
-}
-
-fn vpc_tree(aws: &aws::Ec2Resources, vpc: &ec2::model::Vpc) -> ptree::item::StringItem {
-    let mut tree = ptree::TreeBuilder::new(vpc.id_and_name());
-    let tree = &mut tree;
-    let vpc_id = vpc.id();
-    add_children(tree, "Subnets", aws.subnets(&vpc_id));
-    add_children(tree, "Instances", aws.instances(&vpc_id));
-    add_children(tree, "Internet Gateways", aws.internet_gateways(&vpc_id));
-    add_children(tree, "Route Tables", aws.route_tables(&vpc_id));
-    add_children(tree, "Network ACLs", aws.network_acls(&vpc_id));
-    add_children(tree, "VPC Peering Connections", aws.vpc_peerings(&vpc_id));
-    add_children(tree, "VPC Endpoints", aws.vpc_endpoints(&vpc_id));
-    add_children(tree, "NAT Gateways", aws.nat_gateways(&vpc_id));
-    add_children(tree, "Security Groups", aws.security_groups(&vpc_id));
-    add_children(tree, "VPN Connections", aws.vpn_connections(&vpc_id));
-    add_children(tree, "VPN Gateways", aws.vpn_gateways(&vpc_id));
-    add_children(tree, "Network Interfaces", aws.network_interfaces(&vpc_id));
-    tree.build()
-}
-
-fn add_children(ptree: &mut ptree::TreeBuilder, title: impl ToString, resources: Vec<impl Show>) {
-    if !resources.is_empty() {
-        ptree.begin_child(title.to_string());
-        resources.into_iter().for_each(|resource| {
-            ptree.add_empty_child(resource.id_and_name());
-        });
-        ptree.end_child();
-    }
 }

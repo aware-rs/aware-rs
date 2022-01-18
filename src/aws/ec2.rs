@@ -1,5 +1,7 @@
 use aws_sdk_ec2 as ec2;
 
+use crate::Show;
+
 use impls::Optionally;
 
 mod impls;
@@ -71,11 +73,34 @@ impl Ec2Resources {
         Ok(())
     }
 
-    pub(crate) fn vpcs(&self) -> &[ec2::model::Vpc] {
+    pub(crate) fn trees(&self) -> impl Iterator<Item = ptree::item::StringItem> + '_ {
+        self.vpcs().iter().map(|vpc| self.vpc_tree(vpc))
+    }
+
+    fn vpc_tree(&self, vpc: &ec2::model::Vpc) -> ptree::item::StringItem {
+        let mut tree = ptree::TreeBuilder::new(vpc.id_and_name());
+        let tree = &mut tree;
+        let vpc_id = vpc.id();
+        add_children(tree, "Subnets", self.subnets(&vpc_id));
+        add_children(tree, "Instances", self.instances(&vpc_id));
+        add_children(tree, "Internet Gateways", self.internet_gateways(&vpc_id));
+        add_children(tree, "Route Tables", self.route_tables(&vpc_id));
+        add_children(tree, "Network ACLs", self.network_acls(&vpc_id));
+        add_children(tree, "VPC Peering Connections", self.vpc_peerings(&vpc_id));
+        add_children(tree, "VPC Endpoints", self.vpc_endpoints(&vpc_id));
+        add_children(tree, "NAT Gateways", self.nat_gateways(&vpc_id));
+        add_children(tree, "Security Groups", self.security_groups(&vpc_id));
+        add_children(tree, "VPN Connections", self.vpn_connections(&vpc_id));
+        add_children(tree, "VPN Gateways", self.vpn_gateways(&vpc_id));
+        add_children(tree, "Network Interfaces", self.network_interfaces(&vpc_id));
+        tree.build()
+    }
+
+    fn vpcs(&self) -> &[ec2::model::Vpc] {
         &self.vpcs
     }
 
-    pub(crate) fn subnets(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Subnet> {
+    fn subnets(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Subnet> {
         let vpc_id = Some(vpc_id.as_ref());
         self.subnets
             .iter()
@@ -83,7 +108,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn instances(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Instance> {
+    fn instances(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Instance> {
         let vpc_id = Some(vpc_id.as_ref());
         self.instances
             .iter()
@@ -91,10 +116,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn internet_gateways(
-        &self,
-        vpc_id: impl AsRef<str>,
-    ) -> Vec<&ec2::model::InternetGateway> {
+    fn internet_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::InternetGateway> {
         let vpc_id = Some(vpc_id.as_ref());
         self.internet_gateways
             .iter()
@@ -107,7 +129,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn route_tables(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::RouteTable> {
+    fn route_tables(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::RouteTable> {
         let vpc_id = Some(vpc_id.as_ref());
         self.route_tables
             .iter()
@@ -115,7 +137,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn network_acls(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NetworkAcl> {
+    fn network_acls(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NetworkAcl> {
         let vpc_id = Some(vpc_id.as_ref());
         self.network_acls
             .iter()
@@ -123,10 +145,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn vpc_peerings(
-        &self,
-        vpc_id: impl AsRef<str>,
-    ) -> Vec<&ec2::model::VpcPeeringConnection> {
+    fn vpc_peerings(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpcPeeringConnection> {
         let vpc_id = Some(vpc_id.as_ref());
         self.vpc_peerings
             .iter()
@@ -139,7 +158,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn vpc_endpoints(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpcEndpoint> {
+    fn vpc_endpoints(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpcEndpoint> {
         let vpc_id = Some(vpc_id.as_ref());
         self.vpc_endpoints
             .iter()
@@ -147,7 +166,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn nat_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NatGateway> {
+    fn nat_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NatGateway> {
         let vpc_id = Some(vpc_id.as_ref());
         self.nat_gateways
             .iter()
@@ -155,10 +174,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn security_groups(
-        &self,
-        vpc_id: impl AsRef<str>,
-    ) -> Vec<&ec2::model::SecurityGroup> {
+    fn security_groups(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::SecurityGroup> {
         let vpc_id = Some(vpc_id.as_ref());
         self.security_groups
             .iter()
@@ -166,10 +182,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn vpn_connections(
-        &self,
-        _vpc_id: impl AsRef<str>,
-    ) -> Vec<&ec2::model::VpnConnection> {
+    fn vpn_connections(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpnConnection> {
         // let vpc_id = Some(vpc_id.as_ref());
         self.vpn_connections
             .iter()
@@ -177,7 +190,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn vpn_gateways(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpnGateway> {
+    fn vpn_gateways(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpnGateway> {
         // let vpc_id = Some(vpc_id.as_ref());
         self.vpn_gateways
             .iter()
@@ -185,10 +198,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) fn network_interfaces(
-        &self,
-        vpc_id: impl AsRef<str>,
-    ) -> Vec<&ec2::model::NetworkInterface> {
+    fn network_interfaces(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NetworkInterface> {
         let vpc_id = Some(vpc_id.as_ref());
         self.network_interfaces
             .iter()
@@ -571,4 +581,14 @@ fn filter(key: &str, values: impl IntoIterator<Item = impl Into<String>>) -> ec2
         .into_iter()
         .fold(builder, |builder, value| builder.values(value))
         .build()
+}
+
+fn add_children(ptree: &mut ptree::TreeBuilder, title: impl ToString, resources: Vec<impl Show>) {
+    if !resources.is_empty() {
+        ptree.begin_child(title.to_string());
+        resources.into_iter().for_each(|resource| {
+            ptree.add_empty_child(resource.id_and_name());
+        });
+        ptree.end_child();
+    }
 }
