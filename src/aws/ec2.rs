@@ -1,4 +1,5 @@
 use aws_sdk_ec2 as ec2;
+use tokio_stream::StreamExt;
 
 use crate::Show;
 
@@ -212,236 +213,150 @@ impl Ec2Resources {
             .map(|vpc_id| ec2::model::Vpc::builder().vpc_id(vpc_id).build())
             .collect();
 
-        let mut vpcs = vec![];
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_vpcs()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            vpcs.extend(output.vpcs.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
-
-        self.vpcs = vpcs;
-
-        // let describe_vpc = self.client.describe_vpcs();
-        // let output = describe_vpcs.clone().send().await?;
-        // let mut vpcs = output.vpcs.unwrap_or_default();
-        // let mut next_token = output.next_token;
-
-        // while let Some(token) = next_token {
-        //     output = client.describe_vpcs().next_token(token).send().await?;
-        //     vpcs.extend(output.vpcs.unwrap_or_default());
-        //     next_token = output.next_token;
-        // }
+        self.vpcs = self
+            .client
+            .describe_vpcs()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_subnets(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_subnets()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.subnets.extend(output.subnets.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.subnets = self
+            .client
+            .describe_subnets()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_instances(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_instances()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-
-            let instances = output
-                .reservations
-                .unwrap_or_default()
-                .into_iter()
-                .flat_map(|reservation| reservation.instances.unwrap_or_default());
-
-            self.instances.extend(instances);
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.instances = self
+            .client
+            .describe_instances()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<Vec<_>, _>>()
+            .await?
+            .into_iter()
+            .flat_map(|reservation| reservation.instances.unwrap_or_default())
+            .collect();
 
         Ok(())
     }
 
     async fn collect_internet_gateways(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_internet_gateways()
-                .set_next_token(next_token)
-                .optionally_filter(self.attachment_vpc_filter())
-                .send()
-                .await?;
-            self.internet_gateways
-                .extend(output.internet_gateways.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.internet_gateways = self
+            .client
+            .describe_internet_gateways()
+            .optionally_filter(self.attachment_vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_route_tables(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_route_tables()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.route_tables
-                .extend(output.route_tables.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.route_tables = self
+            .client
+            .describe_route_tables()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_network_acls(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_network_acls()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.network_acls
-                .extend(output.network_acls.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.network_acls = self
+            .client
+            .describe_network_acls()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_vpc_peerings(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_vpc_peering_connections()
-                .set_next_token(next_token)
-                .optionally_filter(self.requester_vpc_filter())
-                .send()
-                .await?;
-            self.vpc_peerings
-                .extend(output.vpc_peering_connections.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.vpc_peerings = self
+            .client
+            .describe_vpc_peering_connections()
+            .optionally_filter(self.requester_vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_vpc_endpoints(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_vpc_endpoints()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.vpc_endpoints
-                .extend(output.vpc_endpoints.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.vpc_endpoints = self
+            .client
+            .describe_vpc_endpoints()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_nat_gateways(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_nat_gateways()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.nat_gateways
-                .extend(output.nat_gateways.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.nat_gateways = self
+            .client
+            .describe_nat_gateways()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
     async fn collect_security_groups(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_security_groups()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.security_groups
-                .extend(output.security_groups.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.security_groups = self
+            .client
+            .describe_security_groups()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
 
-    // describe_vpn_connections does not support looping with next token
     async fn collect_vpn_connections(&mut self) -> Result<(), ec2::Error> {
-        let vpn_connections = self
+        self.vpn_connections = self
             .client
             .describe_vpn_connections()
             .optionally_filter(self.vpc_filter())
@@ -449,31 +364,12 @@ impl Ec2Resources {
             .await?
             .vpn_connections
             .unwrap_or_default();
-        self.vpn_connections.extend(vpn_connections);
-
-        // let mut next_token = None;
-        // loop {
-        //     let output = self
-        //         .client
-        //         .describe_vpn_connections()
-        //         .set_next_token(next_token)
-        //         .optionally_filter(self.vpc_filter())
-        //         .send()
-        //         .await?;
-        //     self.vpn_connections
-        //         .extend(output.vpn_connections.unwrap_or_default());
-        //     next_token = output.next_token;
-        //     if next_token.is_none() {
-        //         break;
-        //     }
-        // }
 
         Ok(())
     }
 
-    // describe_vpn_connections does not support looping with next token
     async fn collect_vpn_gateways(&mut self) -> Result<(), ec2::Error> {
-        let vpn_gateways = self
+        self.vpn_gateways = self
             .client
             .describe_vpn_gateways()
             .optionally_filter(self.attachment_vpc_filter())
@@ -481,45 +377,20 @@ impl Ec2Resources {
             .await?
             .vpn_gateways
             .unwrap_or_default();
-        self.vpn_gateways.extend(vpn_gateways);
-
-        // let mut next_token = None;
-        // loop {
-        //     let output = self
-        //         .client
-        //         .describe_vpn_gateways()
-        //         .set_next_token(next_token)
-        //         .optionally_filter(self.vpc_filter())
-        //         .send()
-        //         .await?;
-        //     self.vpn_gateways
-        //         .extend(output.vpn_gateways.unwrap_or_default());
-        //     next_token = output.next_token;
-        //     if next_token.is_none() {
-        //         break;
-        //     }
-        // }
 
         Ok(())
     }
 
     async fn collect_network_interfaces(&mut self) -> Result<(), ec2::Error> {
-        let mut next_token = None;
-        loop {
-            let output = self
-                .client
-                .describe_network_interfaces()
-                .set_next_token(next_token)
-                .optionally_filter(self.vpc_filter())
-                .send()
-                .await?;
-            self.network_interfaces
-                .extend(output.network_interfaces.unwrap_or_default());
-            next_token = output.next_token;
-            if next_token.is_none() {
-                break;
-            }
-        }
+        self.network_interfaces = self
+            .client
+            .describe_network_interfaces()
+            .optionally_filter(self.vpc_filter())
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
 
         Ok(())
     }
