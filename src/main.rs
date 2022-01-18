@@ -30,38 +30,38 @@
 
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2 as ec2;
-use structopt::StructOpt;
+use clap::Parser;
 
 use show::Show;
 
 mod aws;
 mod show;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Aware {
-    #[structopt(
+    #[clap(
         help = "Explore resources from this region / these regions",
         long,
         short,
         global = true
     )]
     region: Vec<String>,
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     service: AwsService,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub(crate) enum AwsService {
-    #[structopt(name = "ec2", about = "Explore EC2 resources")]
+    #[clap(name = "ec2", about = "Explore EC2 resources")]
     Ec2 {
-        #[structopt(long, short)]
+        #[clap(long, short)]
         vpc: Vec<String>,
     },
-    #[structopt(name = "cf", about = "Explore CloudFormation resources")]
+    #[clap(name = "cf", about = "Explore CloudFormation resources")]
     CloudFormation {
-        #[structopt(help = "Filter by given stack name", long)]
+        #[clap(help = "Filter by given stack name", long)]
         stack: Vec<String>,
-        #[structopt(help = "Filter by given stack status", long)]
+        #[clap(help = "Filter by given stack status", long)]
         status: Vec<aws::cf::model::StackStatus>,
     },
 }
@@ -70,7 +70,7 @@ pub(crate) enum AwsService {
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let aware = Aware::from_args();
+    let aware = Aware::parse();
 
     let regions = if aware.region.is_empty() {
         get_all_regions().await?
