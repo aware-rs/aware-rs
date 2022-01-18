@@ -17,6 +17,7 @@ ptree = "0.4"
 structopt = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = "0.1"
+tracing-subscriber = "0.3"
 
 [package.metadata.release]
 allow-branch = ["main"]
