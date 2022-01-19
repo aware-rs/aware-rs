@@ -70,6 +70,11 @@ pub(crate) enum AwsService {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Turn logging off by default
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "off");
+    }
+
     tracing_subscriber::fmt::init();
 
     let aware = Aware::parse();
