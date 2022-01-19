@@ -28,9 +28,11 @@
 // aws ec2 describe-vpn-gateways --filters 'Name=attachment.vpc-id,Values='$vpc | grep VpnGatewayId
 // aws ec2 describe-network-interfaces --filters 'Name=vpc-id,Values='$vpc | grep NetworkInterfaceId
 
+use std::env;
+
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_ec2 as ec2;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 use show::Show;
 
@@ -50,7 +52,7 @@ struct Aware {
     service: AwsService,
 }
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Subcommand)]
 pub(crate) enum AwsService {
     #[clap(name = "ec2", about = "Explore EC2 resources")]
     Ec2 {
