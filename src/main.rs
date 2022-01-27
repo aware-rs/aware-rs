@@ -57,6 +57,8 @@ pub(crate) enum AwsService {
     #[clap(name = "ec2", about = "Explore EC2 resources")]
     Ec2 {
         #[clap(help = "Filter by VPC", long, short)]
+        #[clap(help = "List existing tags", long)]
+        list_tags: bool,
         vpc: Vec<String>,
         #[clap(help = "Filter by tag", long, parse(try_from_str = parse_tag))]
         tag: Vec<(String, String)>,
@@ -88,7 +90,11 @@ async fn main() -> anyhow::Result<()> {
     };
 
     match aware.service {
-        AwsService::Ec2 { vpc, tag } => collect_ec2(regions, vpc, tag).await,
+        AwsService::Ec2 {
+            list_tags,
+            vpc,
+            tag,
+        } => collect_ec2(regions, list_tags, vpc, tag).await,
         AwsService::CloudFormation { stack, status } => collect_cf(regions, stack, status).await,
     }
 }
@@ -108,6 +114,7 @@ async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
 
 async fn collect_ec2(
     regions: Vec<String>,
+    list_tags: bool,
     vpc: Vec<String>,
     tags: Vec<(String, String)>,
 ) -> anyhow::Result<()> {
@@ -128,11 +135,17 @@ async fn collect_ec2(
         );
         progress.set_prefix(region.clone());
         let mut ec2 = aws::Ec2Resources::new(client, &tags);
-        progress.set_message("Collecting VPCs");
-        ec2.collect_vpcs(&vpc).await?;
-        progress.inc(1);
 
-        ec2.collect(&progress).await?;
+        if list_tags {
+            progress.set_message("Collecting Tags");
+            ec2.collect_tags().await?;
+            progress.inc(1);
+        } else {
+            progress.set_message("Collecting VPCs");
+            ec2.collect_vpcs(&vpc).await?;
+            progress.inc(1);
+            ec2.collect(&progress).await?;
+        }
 
         progress.finish();
 

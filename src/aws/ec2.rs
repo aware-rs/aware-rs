@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use aws_sdk_ec2 as ec2;
 use tokio_stream::StreamExt;
 
@@ -11,6 +13,7 @@ mod impls;
 pub(crate) struct Ec2Resources {
     client: ec2::Client,
     tags: Vec<(String, String)>,
+    tag_descriptions: Vec<ec2::model::TagDescription>,
     vpcs: Vec<ec2::model::Vpc>,
     subnets: Vec<ec2::model::Subnet>,                      // 1
     instances: Vec<ec2::model::Instance>,                  // 2
@@ -32,6 +35,7 @@ impl Ec2Resources {
         Self {
             client,
             tags,
+            tag_descriptions: vec![],
             vpcs: vec![],
             subnets: vec![],
             instances: vec![],
@@ -78,7 +82,49 @@ impl Ec2Resources {
     }
 
     pub(crate) fn trees(&self) -> impl Iterator<Item = ptree::item::StringItem> + '_ {
-        self.vpcs().iter().map(|vpc| self.vpc_tree(vpc))
+        if self.tag_descriptions.is_empty() {
+            self.vpcs()
+                .iter()
+                .map(|vpc| self.vpc_tree(vpc))
+                .collect::<Vec<_>>()
+                .into_iter()
+        } else {
+            vec![self.tag_tree()].into_iter()
+        }
+    }
+
+    fn tag_tree(&self) -> ptree::item::StringItem {
+        let mut tags: HashMap<&str, HashMap<&str, HashMap<&str, Vec<&str>>>> = HashMap::new();
+
+        for tag in self.tag_descriptions.iter() {
+            tags.entry(tag.key().unwrap_or_default())
+                .or_default()
+                .entry(tag.value().unwrap_or_default())
+                .or_default()
+                .entry(tag.resource_type().map(|r| r.as_str()).unwrap_or_default())
+                .or_default()
+                .push(tag.resource_id().unwrap_or_default());
+        }
+
+        let mut tree = ptree::TreeBuilder::new(String::from("Tags"));
+        let tree = &mut tree;
+
+        for (tag, values) in tags {
+            tree.begin_child(tag.to_string());
+            for (value, resources) in values {
+                tree.begin_child(value.to_string());
+                for (resource_type, resource_ids) in resources {
+                    tree.begin_child(resource_type.to_string());
+                    for resource_id in resource_ids {
+                        tree.add_empty_child(resource_id.to_string());
+                    }
+                    tree.end_child();
+                }
+                tree.end_child();
+            }
+            tree.end_child();
+        }
+        tree.build()
     }
 
     fn vpc_tree(&self, vpc: &ec2::model::Vpc) -> ptree::item::StringItem {
@@ -208,6 +254,18 @@ impl Ec2Resources {
             .iter()
             .filter(|network_interface| network_interface.vpc_id() == vpc_id)
             .collect()
+    }
+
+    pub(crate) async fn collect_tags(&mut self) -> Result<(), ec2::Error> {
+        self.tag_descriptions = self
+            .client
+            .describe_tags()
+            .into_paginator()
+            .items()
+            .send()
+            .collect::<Result<_, _>>()
+            .await?;
+        Ok(())
     }
 
     pub(crate) async fn collect_vpcs(&mut self, vpcs: &[String]) -> Result<(), ec2::Error> {
