@@ -56,8 +56,10 @@ struct Aware {
 pub(crate) enum AwsService {
     #[clap(name = "ec2", about = "Explore EC2 resources")]
     Ec2 {
-        #[clap(long, short)]
+        #[clap(help = "Filter by VPC", long, short)]
         vpc: Vec<String>,
+        #[clap(help = "Filter by tag", long, parse(try_from_str = parse_tag))]
+        tag: Vec<(String, String)>,
     },
     #[clap(name = "cf", about = "Explore CloudFormation resources")]
     CloudFormation {
@@ -86,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     match aware.service {
-        AwsService::Ec2 { vpc } => collect_ec2(regions, vpc).await,
+        AwsService::Ec2 { vpc, tag } => collect_ec2(regions, vpc, tag).await,
         AwsService::CloudFormation { stack, status } => collect_cf(regions, stack, status).await,
     }
 }
@@ -104,7 +106,11 @@ async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
     Ok(regions)
 }
 
-async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> anyhow::Result<()> {
+async fn collect_ec2(
+    regions: Vec<String>,
+    vpc: Vec<String>,
+    tags: Vec<(String, String)>,
+) -> anyhow::Result<()> {
     let regioned_clients = regions
         .into_iter()
         .map(ec2::Region::new)
@@ -121,7 +127,7 @@ async fn collect_ec2(regions: Vec<String>, vpc: Vec<String>) -> anyhow::Result<(
             ),
         );
         progress.set_prefix(region.clone());
-        let mut ec2 = aws::Ec2Resources::new(client);
+        let mut ec2 = aws::Ec2Resources::new(client, &tags);
         progress.set_message("Collecting VPCs");
         ec2.collect_vpcs(&vpc).await?;
         progress.inc(1);
@@ -176,4 +182,10 @@ async fn collect_cf(
     }
 
     Ok(())
+}
+
+fn parse_tag(text: &str) -> anyhow::Result<(String, String)> {
+    text.split_once('=')
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .ok_or_else(|| anyhow::anyhow!("Invalid format: should be key=value"))
 }

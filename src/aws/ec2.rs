@@ -10,6 +10,7 @@ mod impls;
 #[derive(Debug)]
 pub(crate) struct Ec2Resources {
     client: ec2::Client,
+    tags: Vec<(String, String)>,
     vpcs: Vec<ec2::model::Vpc>,
     subnets: Vec<ec2::model::Subnet>,                      // 1
     instances: Vec<ec2::model::Instance>,                  // 2
@@ -26,9 +27,11 @@ pub(crate) struct Ec2Resources {
 }
 
 impl Ec2Resources {
-    pub(crate) fn new(client: ec2::Client) -> Self {
+    pub(crate) fn new(client: ec2::Client, tags: &[(String, String)]) -> Self {
+        let tags = tags.to_vec();
         Self {
             client,
+            tags,
             vpcs: vec![],
             subnets: vec![],
             instances: vec![],
@@ -217,6 +220,7 @@ impl Ec2Resources {
             .client
             .describe_vpcs()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -231,6 +235,7 @@ impl Ec2Resources {
             .client
             .describe_subnets()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -245,6 +250,7 @@ impl Ec2Resources {
             .client
             .describe_instances()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -262,6 +268,7 @@ impl Ec2Resources {
             .client
             .describe_internet_gateways()
             .optionally_filter(self.attachment_vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -276,6 +283,7 @@ impl Ec2Resources {
             .client
             .describe_route_tables()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -290,6 +298,7 @@ impl Ec2Resources {
             .client
             .describe_network_acls()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -304,6 +313,7 @@ impl Ec2Resources {
             .client
             .describe_vpc_peering_connections()
             .optionally_filter(self.requester_vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -318,6 +328,7 @@ impl Ec2Resources {
             .client
             .describe_vpc_endpoints()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -332,6 +343,7 @@ impl Ec2Resources {
             .client
             .describe_nat_gateways()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -346,6 +358,7 @@ impl Ec2Resources {
             .client
             .describe_security_groups()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -360,6 +373,7 @@ impl Ec2Resources {
             .client
             .describe_vpn_connections()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .send()
             .await?
             .vpn_connections
@@ -373,6 +387,7 @@ impl Ec2Resources {
             .client
             .describe_vpn_gateways()
             .optionally_filter(self.attachment_vpc_filter())
+            .fold_filters(self.tag_filter())
             .send()
             .await?
             .vpn_gateways
@@ -386,6 +401,7 @@ impl Ec2Resources {
             .client
             .describe_network_interfaces()
             .optionally_filter(self.vpc_filter())
+            .fold_filters(self.tag_filter())
             .into_paginator()
             .items()
             .send()
@@ -406,6 +422,14 @@ impl Ec2Resources {
         } else {
             Some(filter("vpc-id", vpcs))
         }
+    }
+
+    fn tag_filter(&self) -> Vec<ec2::model::Filter> {
+        self.tags
+            .iter()
+            .map(|(key, value)| (format!("tag:{key}"), [value]))
+            .map(|(key, values)| filter(key, values))
+            .collect()
     }
 
     fn attachment_vpc_filter(&self) -> Option<ec2::model::Filter> {
@@ -446,7 +470,10 @@ pub(crate) async fn regions(client: &ec2::Client) -> Result<Vec<ec2::model::Regi
     Ok(regions)
 }
 
-fn filter(key: &str, values: impl IntoIterator<Item = impl Into<String>>) -> ec2::model::Filter {
+fn filter(
+    key: impl Into<String>,
+    values: impl IntoIterator<Item = impl Into<String>>,
+) -> ec2::model::Filter {
     let builder = ec2::model::Filter::builder().name(key);
     values
         .into_iter()
