@@ -256,13 +256,25 @@ impl Ec2Resources {
             .collect()
     }
 
-    pub(crate) async fn collect_tags(&mut self) -> Result<(), ec2::Error> {
+    pub(crate) async fn collect_tags(
+        &mut self,
+        _progress: &indicatif::ProgressBar,
+    ) -> Result<(), ec2::Error> {
         self.tag_descriptions = self
             .client
             .describe_tags()
             .into_paginator()
             .items()
             .send()
+            // .map(|tag_description| {
+            //     if let Ok(ref tag_description) = tag_description {
+            //         if let Some(key) = tag_description.key() {
+            //             progress.set_message(key.to_string())
+            //         }
+            //         progress.inc(1);
+            //     }
+            //     tag_description
+            // })
             .collect::<Result<_, _>>()
             .await?;
         Ok(())

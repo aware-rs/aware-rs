@@ -125,20 +125,19 @@ async fn collect_ec2(
 
     for region in regioned_clients {
         let shared_config = aws_config::from_env().region(region).load().await;
-        let region = format!("AWS Region {:?}", shared_config.region().id_and_name());
         let client = ec2::Client::new(&shared_config);
 
         let progress = indicatif::ProgressBar::new(1).with_style(
             indicatif::ProgressStyle::default_bar().template(
-                "[{pos}/{len} {prefix}] {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
+                "[{prefix}] {pos}/{len} | {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
             ),
         );
-        progress.set_prefix(region.clone());
+        progress.set_prefix(shared_config.region().id_and_name());
         let mut ec2 = aws::Ec2Resources::new(client, &tags);
 
         if list_tags {
             progress.set_message("Collecting Tags");
-            ec2.collect_tags().await?;
+            ec2.collect_tags(&progress).await?;
             progress.inc(1);
         } else {
             progress.set_message("Collecting VPCs");
