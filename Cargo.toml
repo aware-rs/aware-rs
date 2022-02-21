@@ -19,14 +19,3 @@ ptree = "0.4"
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = "0.1"
 tracing-subscriber = "0.3"
-
-[package.metadata.release]
-allow-branch = ["main"]
-push = true
-tag = true
-publish = true
-verify = true
-pre-release-commit-message = "Bump version to {{version}}"
-tag-message = "{{version}}"
-tag-name = "{{version}}"
-dev-version = false
