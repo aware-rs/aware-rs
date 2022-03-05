@@ -1,6 +1,6 @@
 use aws_sdk_cloudformation as cf;
 use aws_sdk_ec2 as ec2;
-use duplicate::duplicate;
+use duplicate::duplicate_item;
 
 pub(crate) trait Show {
     fn id(&self) -> String;
@@ -40,7 +40,7 @@ impl Show for Option<&ec2::Region> {
     }
 }
 
-#[duplicate(
+#[duplicate_item(
     resource id_accessor;
     [Vpc] [vpc_id];
     [InternetGateway] [internet_gateway_id];
