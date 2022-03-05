@@ -130,7 +130,7 @@ fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[model::StackResourc
 
 pub(crate) fn adjust_stack_statuses(status: Vec<model::StackStatus>) -> Vec<model::StackStatus> {
     if status.is_empty() {
-        // If no explicit status has been selected get evereything but successfully deleted
+        // If no explicit status has been selected get everything but successfully deleted
         vec![
             model::StackStatus::CreateComplete,
             model::StackStatus::CreateFailed,
