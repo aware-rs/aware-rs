@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use aws_sdk_cloudformation as cf;
 use tokio_stream::StreamExt;
 
@@ -26,6 +28,11 @@ impl CfResources {
         stacks: &[String],
         statuses: &[model::StackStatus],
     ) -> Result<(), cf::Error> {
+        let requested = stacks
+            .iter()
+            .map(|s| s.as_str())
+            .map(Some)
+            .collect::<BTreeSet<_>>();
         let list_stacks = self.client.list_stacks();
         self.stacks = statuses
             .iter()
@@ -35,9 +42,10 @@ impl CfResources {
             .into_paginator()
             .items()
             .send()
-            .filter(|stack| stacks.is_empty() || is_requested(stack, stacks))
-            .collect::<Result<_, _>>()
-            .await?;
+            .filter_map(|stack| stack.ok())
+            .filter(|stack| is_requested(stack, &requested))
+            .collect()
+            .await;
 
         Ok(())
     }
@@ -104,19 +112,10 @@ fn stack_tree(
     tree.build()
 }
 
-fn is_requested(
-    stack: &Result<model::StackSummary, cf::SdkError<cf::error::ListStacksError>>,
-    requested: &[String],
-) -> bool {
-    if let Ok(stack) = stack {
-        requested
-            .iter()
-            .map(|name| name.as_str())
-            .map(Some)
-            .any(|name| stack.stack_name() == name || stack.stack_id() == name)
-    } else {
-        false
-    }
+fn is_requested(stack: &model::StackSummary, requested: &BTreeSet<Option<&str>>) -> bool {
+    requested.is_empty()
+        || requested.contains(&stack.stack_name())
+        || requested.contains(&stack.stack_id())
 }
 
 fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[model::StackResource]) {
