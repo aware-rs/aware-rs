@@ -529,14 +529,20 @@ impl Ec2Resources {
     }
 }
 
-pub(crate) async fn regions(client: &ec2::Client) -> Result<Vec<ec2::model::Region>, ec2::Error> {
-    let regions = client
+pub(crate) async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
+    let shared_config = aws_config::load_from_env().await;
+
+    let regions = ec2::Client::new(&shared_config)
         .describe_regions()
         .all_regions(true)
         .send()
         .await?
         .regions
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|region| region.region_name)
+        .collect();
+
     Ok(regions)
 }
 

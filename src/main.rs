@@ -84,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
     let aware = Aware::parse();
 
     let regions = if aware.region.is_empty() {
-        get_all_regions().await?
+        aws::get_all_regions().await?
     } else {
         aware.region
     };
@@ -97,19 +97,6 @@ async fn main() -> anyhow::Result<()> {
         } => collect_ec2(regions, list_tags, vpc, tag).await,
         AwsService::CloudFormation { stack, status } => collect_cf(regions, stack, status).await,
     }
-}
-
-async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
-    let shared_config = aws_config::load_from_env().await;
-    let client = ec2::Client::new(&shared_config);
-
-    let regions = aws::regions(&client)
-        .await?
-        .into_iter()
-        .filter_map(|region| region.region_name)
-        .collect();
-
-    Ok(regions)
 }
 
 async fn collect_ec2(
