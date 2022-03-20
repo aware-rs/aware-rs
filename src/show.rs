@@ -1,5 +1,6 @@
 use aws_sdk_cloudformation as cf;
 use aws_sdk_ec2 as ec2;
+use aws_types::region::Region;
 use duplicate::duplicate_item;
 
 pub(crate) trait Show {
@@ -26,7 +27,7 @@ pub(crate) trait Show {
     }
 }
 
-impl Show for Option<&ec2::Region> {
+impl Show for Option<&Region> {
     fn id(&self) -> String {
         self.map(ToString::to_string).unwrap_or_default()
     }

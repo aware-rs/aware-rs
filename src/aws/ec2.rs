@@ -30,7 +30,8 @@ pub(crate) struct Ec2Resources {
 }
 
 impl Ec2Resources {
-    pub(crate) fn new(client: ec2::Client, tags: &[(String, String)]) -> Self {
+    pub(crate) fn new(config: &aws_types::SdkConfig, tags: &[(String, String)]) -> Self {
+        let client = ec2::Client::new(config);
         let tags = tags.to_vec();
         Self {
             client,

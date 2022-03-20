@@ -31,7 +31,7 @@
 use std::env;
 
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_ec2 as ec2;
+use aws_types::region::Region;
 use clap::{Parser, Subcommand};
 
 use show::Show;
@@ -107,12 +107,11 @@ async fn collect_ec2(
 ) -> anyhow::Result<()> {
     let regioned_clients = regions
         .into_iter()
-        .map(ec2::Region::new)
+        .map(Region::new)
         .map(RegionProviderChain::first_try);
 
     for region in regioned_clients {
         let shared_config = aws_config::from_env().region(region).load().await;
-        let client = ec2::Client::new(&shared_config);
 
         let progress = indicatif::ProgressBar::new(1).with_style(
             indicatif::ProgressStyle::default_bar().template(
@@ -120,7 +119,7 @@ async fn collect_ec2(
             ),
         );
         progress.set_prefix(shared_config.region().id_and_name());
-        let mut ec2 = aws::Ec2Resources::new(client, &tags);
+        let mut ec2 = aws::Ec2Resources::new(&shared_config, &tags);
 
         if list_tags {
             progress.set_message("Collecting Tags");
@@ -151,7 +150,7 @@ async fn collect_cf(
 ) -> anyhow::Result<()> {
     let regioned_clients = regions
         .into_iter()
-        .map(ec2::Region::new)
+        .map(Region::new)
         .map(RegionProviderChain::first_try);
     let statuses = aws::cf::adjust_stack_statuses(status);
 

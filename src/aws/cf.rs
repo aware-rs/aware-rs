@@ -13,7 +13,7 @@ pub(crate) struct CfResources {
 }
 
 impl CfResources {
-    pub(crate) fn new(config: &aws_config::Config) -> Self {
+    pub(crate) fn new(config: &aws_types::SdkConfig) -> Self {
         let client = cf::Client::new(config);
 
         Self {
