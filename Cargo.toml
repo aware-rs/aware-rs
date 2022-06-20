@@ -9,10 +9,10 @@ rust-version = "1.58.0"
 
 [dependencies]
 anyhow = "1.0"
-aws-config = "0.12"
-aws-types = "0.12"
-aws-sdk-ec2 = "0.12"
-aws-sdk-cloudformation = "0.12"
+aws-config = "0.13"
+aws-types = "0.13"
+aws-sdk-ec2 = "0.13"
+aws-sdk-cloudformation = "0.13"
 clap = { version = "3.0", features = ["derive"] }
 duplicate = "0.4"
 indicatif = "0.16"
