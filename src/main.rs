@@ -113,11 +113,10 @@ async fn collect_ec2(
     for region in regioned_clients {
         let shared_config = aws_config::from_env().region(region).load().await;
 
-        let progress = indicatif::ProgressBar::new(1).with_style(
-            indicatif::ProgressStyle::default_bar().template(
-                "[{prefix}] {pos}/{len} | {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
-            ),
-        );
+        let style = indicatif::ProgressStyle::default_bar().template(
+            "[{prefix}] {pos}/{len} | {msg:24} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
+        )?;
+        let progress = indicatif::ProgressBar::new(1).with_style(style);
         progress.set_prefix(shared_config.region().id_and_name());
         let mut ec2 = aws::Ec2Resources::new(&shared_config, &tags);
 
@@ -159,10 +158,10 @@ async fn collect_cf(
         let region = format!("AWS Region {:?}", shared_config.region().id_and_name());
         // let client = cf::Client::new(&shared_config);
 
-        let progress = indicatif::ProgressBar::new(1)
-            .with_style(indicatif::ProgressStyle::default_bar().template(
+        let style = indicatif::ProgressStyle::default_bar().template(
             "[{pos:>3}/{len:>3} {prefix}] {msg:24!} {wide_bar} [{elapsed}/{duration} ETA {eta}]",
-        ));
+        )?;
+        let progress = indicatif::ProgressBar::new(1).with_style(style);
         progress.set_prefix(region.clone());
         let mut cf = aws::CfResources::new(&shared_config);
         progress.set_message("Collecting stacks");
