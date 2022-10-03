@@ -41,33 +41,33 @@ mod show;
 
 #[derive(Debug, Parser)]
 struct Aware {
-    #[clap(
+    #[arg(
         help = "Explore resources from this region / these regions",
         long,
         short,
         global = true
     )]
     region: Vec<String>,
-    #[clap(subcommand)]
+    #[command(subcommand)]
     service: AwsService,
 }
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum AwsService {
-    #[clap(name = "ec2", about = "Explore EC2 resources")]
+    #[command(name = "ec2", about = "Explore EC2 resources")]
     Ec2 {
-        #[clap(help = "Filter by VPC", long, short)]
-        #[clap(help = "List existing tags", long)]
+        #[arg(help = "Filter by VPC", long, short)]
+        #[arg(help = "List existing tags", long)]
         list_tags: bool,
         vpc: Vec<String>,
-        #[clap(help = "Filter by tag", long, value_parser = parse_tag)]
+        #[arg(help = "Filter by tag", long, value_parser = parse_tag)]
         tag: Vec<(String, String)>,
     },
-    #[clap(name = "cf", about = "Explore CloudFormation resources")]
+    #[command(name = "cf", about = "Explore CloudFormation resources")]
     CloudFormation {
-        #[clap(help = "Filter by given stack name", long)]
+        #[arg(help = "Filter by given stack name", long)]
         stack: Vec<String>,
-        #[clap(help = "Filter by given stack status", long)]
+        #[arg(help = "Filter by given stack status", long)]
         status: Vec<aws::cf::model::StackStatus>,
     },
 }
