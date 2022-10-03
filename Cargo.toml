@@ -13,7 +13,7 @@ aws-config = "0.51"
 aws-types = "0.51"
 aws-sdk-ec2 = "0.21"
 aws-sdk-cloudformation = "0.21"
-clap = { version = "3.0", features = ["derive"] }
+clap = { version = "4.0", features = ["derive"] }
 duplicate = "0.4"
 indicatif = "0.17"
 ptree = "0.4"
