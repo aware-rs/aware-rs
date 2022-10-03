@@ -60,7 +60,7 @@ pub(crate) enum AwsService {
         #[clap(help = "List existing tags", long)]
         list_tags: bool,
         vpc: Vec<String>,
-        #[clap(help = "Filter by tag", long, parse(try_from_str = parse_tag))]
+        #[clap(help = "Filter by tag", long, value_parser = parse_tag)]
         tag: Vec<(String, String)>,
     },
     #[clap(name = "cf", about = "Explore CloudFormation resources")]
