@@ -61,9 +61,7 @@ impl Show for &ec2::model::resource {
     }
 
     fn name(&self) -> Option<&str> {
-        self.tags()
-            .and_then(|tags| tags.iter().find(|tag| tag.key.as_deref() == Some("Name")))
-            .and_then(|tag| tag.value.as_deref())
+        self.tag("Name")
     }
 
     fn tag(&self, key: &str) -> Option<&str> {
