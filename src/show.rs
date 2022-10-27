@@ -20,10 +20,10 @@ pub(crate) trait Show {
         let name = self
             .name()
             .or_else(|| self.description())
-            .map(|name| format!(" ({})", name))
+            .map(|name| format!(" ({name})"))
             .unwrap_or_default();
 
-        format!("{}{}", self.id(), name)
+        format!("{}{name}", self.id())
     }
 }
 
