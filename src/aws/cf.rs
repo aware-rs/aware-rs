@@ -155,10 +155,7 @@ pub(crate) fn adjust_stack_statuses(status: Vec<model::StackStatus>) -> Vec<mode
             model::StackStatus::UpdateRollbackFailed,
             model::StackStatus::UpdateRollbackInProgress,
         ]
-    } else if status
-        .iter()
-        .any(|s| matches!(s, model::StackStatus::Unknown(text) if text.to_lowercase() == "all"))
-    {
+    } else if status.iter().any(|s| s.as_str().to_lowercase() == "all") {
         vec![]
     } else {
         status
