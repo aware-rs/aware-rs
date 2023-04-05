@@ -55,7 +55,7 @@ impl Show for Option<&Region> {
     [VpnConnection] [vpn_connection_id];
     [VpnGateway] [vpn_gateway_id];
 )]
-impl Show for &ec2::model::resource {
+impl Show for &ec2::types::resource {
     fn id(&self) -> String {
         self.id_accessor().unwrap_or_default().to_string()
     }
@@ -72,7 +72,7 @@ impl Show for &ec2::model::resource {
     }
 }
 
-impl Show for &ec2::model::SecurityGroup {
+impl Show for &ec2::types::SecurityGroup {
     fn id(&self) -> String {
         self.group_id.clone().unwrap_or_default()
     }
@@ -89,7 +89,7 @@ impl Show for &ec2::model::SecurityGroup {
     }
 }
 
-impl Show for &ec2::model::NetworkInterface {
+impl Show for &ec2::types::NetworkInterface {
     fn id(&self) -> String {
         self.network_interface_id.clone().unwrap_or_default()
     }
@@ -106,7 +106,7 @@ impl Show for &ec2::model::NetworkInterface {
     }
 }
 
-impl Show for &cf::model::Stack {
+impl Show for &cf::types::Stack {
     fn id(&self) -> String {
         self.stack_id().unwrap_or_default().to_string()
     }
@@ -123,7 +123,7 @@ impl Show for &cf::model::Stack {
     }
 }
 
-impl Show for &cf::model::StackResourceSummary {
+impl Show for &cf::types::StackResourceSummary {
     fn id(&self) -> String {
         self.physical_resource_id().unwrap_or_default().to_string()
     }
@@ -147,7 +147,7 @@ impl Show for &cf::model::StackResourceSummary {
     }
 }
 
-impl Show for cf::model::StackResourceSummary {
+impl Show for cf::types::StackResourceSummary {
     fn id(&self) -> String {
         self.physical_resource_id().unwrap_or_default().to_string()
     }
@@ -171,7 +171,7 @@ impl Show for cf::model::StackResourceSummary {
     }
 }
 
-impl Show for cf::model::StackResource {
+impl Show for cf::types::StackResource {
     fn id(&self) -> String {
         self.physical_resource_id().unwrap_or_default().to_string()
     }

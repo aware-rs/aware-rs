@@ -3,13 +3,13 @@ use std::collections::BTreeSet;
 use aws_sdk_cloudformation as cf;
 use tokio_stream::StreamExt;
 
-pub(crate) use cf::model;
+pub(crate) use cf::types::StackStatus;
 
 #[derive(Debug)]
 pub(crate) struct CfResources {
     client: cf::Client,
-    stacks: Vec<model::StackSummary>,
-    resources: Vec<(model::StackSummary, Vec<model::StackResource>)>,
+    stacks: Vec<cf::types::StackSummary>,
+    resources: Vec<(cf::types::StackSummary, Vec<cf::types::StackResource>)>,
 }
 
 impl CfResources {
@@ -26,7 +26,7 @@ impl CfResources {
     pub(crate) async fn collect_stacks(
         &mut self,
         stacks: &[String],
-        statuses: &[model::StackStatus],
+        statuses: &[StackStatus],
     ) -> Result<(), cf::Error> {
         let requested = stacks
             .iter()
@@ -80,7 +80,7 @@ impl CfResources {
     async fn collect_resources(
         &self,
         stack_name: &str,
-    ) -> Result<Vec<model::StackResource>, cf::Error> {
+    ) -> Result<Vec<cf::types::StackResource>, cf::Error> {
         let resources = self
             .client
             .describe_stack_resources()
@@ -104,21 +104,21 @@ impl CfResources {
 }
 
 fn stack_tree(
-    stack: &model::StackSummary,
-    resources: &[model::StackResource],
+    stack: &cf::types::StackSummary,
+    resources: &[cf::types::StackResource],
 ) -> ptree::item::StringItem {
     let mut tree = ptree::TreeBuilder::new(stack.title());
     add_children(&mut tree, resources);
     tree.build()
 }
 
-fn is_requested(stack: &model::StackSummary, requested: &BTreeSet<Option<&str>>) -> bool {
+fn is_requested(stack: &cf::types::StackSummary, requested: &BTreeSet<Option<&str>>) -> bool {
     requested.is_empty()
         || requested.contains(&stack.stack_name())
         || requested.contains(&stack.stack_id())
 }
 
-fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[model::StackResource]) {
+fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[cf::types::StackResource]) {
     resources.iter().for_each(|resource| {
         ptree.begin_child(resource.title());
         let r#type = resource.resource_type().unwrap_or("no type");
@@ -128,32 +128,32 @@ fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[model::StackResourc
     })
 }
 
-pub(crate) fn adjust_stack_statuses(status: Vec<model::StackStatus>) -> Vec<model::StackStatus> {
+pub(crate) fn adjust_stack_statuses(status: Vec<StackStatus>) -> Vec<StackStatus> {
     if status.is_empty() {
         // If no explicit status has been selected get everything but successfully deleted
         vec![
-            model::StackStatus::CreateComplete,
-            model::StackStatus::CreateFailed,
-            model::StackStatus::CreateInProgress,
-            model::StackStatus::DeleteFailed,
-            model::StackStatus::DeleteInProgress,
-            model::StackStatus::ImportComplete,
-            model::StackStatus::ImportInProgress,
-            model::StackStatus::ImportRollbackComplete,
-            model::StackStatus::ImportRollbackFailed,
-            model::StackStatus::ImportRollbackInProgress,
-            model::StackStatus::ReviewInProgress,
-            model::StackStatus::RollbackComplete,
-            model::StackStatus::RollbackFailed,
-            model::StackStatus::RollbackInProgress,
-            model::StackStatus::UpdateComplete,
-            model::StackStatus::UpdateCompleteCleanupInProgress,
-            model::StackStatus::UpdateFailed,
-            model::StackStatus::UpdateInProgress,
-            model::StackStatus::UpdateRollbackComplete,
-            model::StackStatus::UpdateRollbackCompleteCleanupInProgress,
-            model::StackStatus::UpdateRollbackFailed,
-            model::StackStatus::UpdateRollbackInProgress,
+            StackStatus::CreateComplete,
+            StackStatus::CreateFailed,
+            StackStatus::CreateInProgress,
+            StackStatus::DeleteFailed,
+            StackStatus::DeleteInProgress,
+            StackStatus::ImportComplete,
+            StackStatus::ImportInProgress,
+            StackStatus::ImportRollbackComplete,
+            StackStatus::ImportRollbackFailed,
+            StackStatus::ImportRollbackInProgress,
+            StackStatus::ReviewInProgress,
+            StackStatus::RollbackComplete,
+            StackStatus::RollbackFailed,
+            StackStatus::RollbackInProgress,
+            StackStatus::UpdateComplete,
+            StackStatus::UpdateCompleteCleanupInProgress,
+            StackStatus::UpdateFailed,
+            StackStatus::UpdateInProgress,
+            StackStatus::UpdateRollbackComplete,
+            StackStatus::UpdateRollbackCompleteCleanupInProgress,
+            StackStatus::UpdateRollbackFailed,
+            StackStatus::UpdateRollbackInProgress,
         ]
     } else if status.iter().any(|s| s.as_str().to_lowercase() == "all") {
         vec![]
@@ -166,7 +166,7 @@ trait Title {
     fn title(&self) -> String;
 }
 
-impl Title for model::Stack {
+impl Title for cf::types::Stack {
     fn title(&self) -> String {
         let name = self.stack_name().unwrap_or_default();
         if let Some(status) = self.stack_status().map(|status| status.as_str()) {
@@ -177,7 +177,7 @@ impl Title for model::Stack {
     }
 }
 
-impl Title for model::StackSummary {
+impl Title for cf::types::StackSummary {
     fn title(&self) -> String {
         let name = self.stack_name().unwrap_or_default();
         if let Some(status) = self.stack_status().map(|status| status.as_str()) {
@@ -188,7 +188,7 @@ impl Title for model::StackSummary {
     }
 }
 
-impl Title for model::StackResource {
+impl Title for cf::types::StackResource {
     fn title(&self) -> String {
         let name = self.logical_resource_id().unwrap_or_default();
         if let Some(status) = self.resource_status().map(|status| status.as_str()) {

@@ -13,20 +13,20 @@ mod impls;
 pub(crate) struct Ec2Resources {
     client: ec2::Client,
     tags: Vec<(String, String)>,
-    tag_descriptions: Vec<ec2::model::TagDescription>,
-    vpcs: Vec<ec2::model::Vpc>,
-    subnets: Vec<ec2::model::Subnet>,                      // 1
-    instances: Vec<ec2::model::Instance>,                  // 2
-    internet_gateways: Vec<ec2::model::InternetGateway>,   // 3
-    route_tables: Vec<ec2::model::RouteTable>,             // 4
-    network_acls: Vec<ec2::model::NetworkAcl>,             // 5
-    vpc_peerings: Vec<ec2::model::VpcPeeringConnection>,   // 6
-    vpc_endpoints: Vec<ec2::model::VpcEndpoint>,           // 7
-    nat_gateways: Vec<ec2::model::NatGateway>,             // 8
-    security_groups: Vec<ec2::model::SecurityGroup>,       // 9
-    vpn_connections: Vec<ec2::model::VpnConnection>,       // 10
-    vpn_gateways: Vec<ec2::model::VpnGateway>,             // 11
-    network_interfaces: Vec<ec2::model::NetworkInterface>, // 12
+    tag_descriptions: Vec<ec2::types::TagDescription>,
+    vpcs: Vec<ec2::types::Vpc>,
+    subnets: Vec<ec2::types::Subnet>,                      // 1
+    instances: Vec<ec2::types::Instance>,                  // 2
+    internet_gateways: Vec<ec2::types::InternetGateway>,   // 3
+    route_tables: Vec<ec2::types::RouteTable>,             // 4
+    network_acls: Vec<ec2::types::NetworkAcl>,             // 5
+    vpc_peerings: Vec<ec2::types::VpcPeeringConnection>,   // 6
+    vpc_endpoints: Vec<ec2::types::VpcEndpoint>,           // 7
+    nat_gateways: Vec<ec2::types::NatGateway>,             // 8
+    security_groups: Vec<ec2::types::SecurityGroup>,       // 9
+    vpn_connections: Vec<ec2::types::VpnConnection>,       // 10
+    vpn_gateways: Vec<ec2::types::VpnGateway>,             // 11
+    network_interfaces: Vec<ec2::types::NetworkInterface>, // 12
 }
 
 impl Ec2Resources {
@@ -128,7 +128,7 @@ impl Ec2Resources {
         tree.build()
     }
 
-    fn vpc_tree(&self, vpc: &ec2::model::Vpc) -> ptree::item::StringItem {
+    fn vpc_tree(&self, vpc: &ec2::types::Vpc) -> ptree::item::StringItem {
         let mut tree = ptree::TreeBuilder::new(vpc.id_and_name());
         let tree = &mut tree;
         let vpc_id = vpc.id();
@@ -147,11 +147,11 @@ impl Ec2Resources {
         tree.build()
     }
 
-    fn vpcs(&self) -> &[ec2::model::Vpc] {
+    fn vpcs(&self) -> &[ec2::types::Vpc] {
         &self.vpcs
     }
 
-    fn subnets(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Subnet> {
+    fn subnets(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::Subnet> {
         let vpc_id = Some(vpc_id.as_ref());
         self.subnets
             .iter()
@@ -159,7 +159,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn instances(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::Instance> {
+    fn instances(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::Instance> {
         let vpc_id = Some(vpc_id.as_ref());
         self.instances
             .iter()
@@ -167,7 +167,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn internet_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::InternetGateway> {
+    fn internet_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::InternetGateway> {
         let vpc_id = Some(vpc_id.as_ref());
         self.internet_gateways
             .iter()
@@ -180,7 +180,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn route_tables(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::RouteTable> {
+    fn route_tables(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::RouteTable> {
         let vpc_id = Some(vpc_id.as_ref());
         self.route_tables
             .iter()
@@ -188,7 +188,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn network_acls(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NetworkAcl> {
+    fn network_acls(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::NetworkAcl> {
         let vpc_id = Some(vpc_id.as_ref());
         self.network_acls
             .iter()
@@ -196,7 +196,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn vpc_peerings(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpcPeeringConnection> {
+    fn vpc_peerings(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::VpcPeeringConnection> {
         let vpc_id = Some(vpc_id.as_ref());
         self.vpc_peerings
             .iter()
@@ -209,7 +209,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn vpc_endpoints(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpcEndpoint> {
+    fn vpc_endpoints(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::VpcEndpoint> {
         let vpc_id = Some(vpc_id.as_ref());
         self.vpc_endpoints
             .iter()
@@ -217,7 +217,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn nat_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NatGateway> {
+    fn nat_gateways(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::NatGateway> {
         let vpc_id = Some(vpc_id.as_ref());
         self.nat_gateways
             .iter()
@@ -225,7 +225,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn security_groups(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::SecurityGroup> {
+    fn security_groups(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::SecurityGroup> {
         let vpc_id = Some(vpc_id.as_ref());
         self.security_groups
             .iter()
@@ -233,7 +233,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn vpn_connections(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpnConnection> {
+    fn vpn_connections(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::types::VpnConnection> {
         // let vpc_id = Some(vpc_id.as_ref());
         self.vpn_connections
             .iter()
@@ -241,7 +241,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn vpn_gateways(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::model::VpnGateway> {
+    fn vpn_gateways(&self, _vpc_id: impl AsRef<str>) -> Vec<&ec2::types::VpnGateway> {
         // let vpc_id = Some(vpc_id.as_ref());
         self.vpn_gateways
             .iter()
@@ -249,7 +249,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn network_interfaces(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::model::NetworkInterface> {
+    fn network_interfaces(&self, vpc_id: impl AsRef<str>) -> Vec<&ec2::types::NetworkInterface> {
         let vpc_id = Some(vpc_id.as_ref());
         self.network_interfaces
             .iter()
@@ -284,7 +284,7 @@ impl Ec2Resources {
     pub(crate) async fn collect_vpcs(&mut self, vpcs: &[String]) -> Result<(), ec2::Error> {
         self.vpcs = vpcs
             .iter()
-            .map(|vpc_id| ec2::model::Vpc::builder().vpc_id(vpc_id).build())
+            .map(|vpc_id| ec2::types::Vpc::builder().vpc_id(vpc_id).build())
             .collect();
 
         self.vpcs = self
@@ -482,7 +482,7 @@ impl Ec2Resources {
         Ok(())
     }
 
-    fn vpc_filter(&self) -> Option<ec2::model::Filter> {
+    fn vpc_filter(&self) -> Option<ec2::types::Filter> {
         let vpcs = self
             .vpcs
             .iter()
@@ -495,7 +495,7 @@ impl Ec2Resources {
         }
     }
 
-    fn tag_filter(&self) -> Vec<ec2::model::Filter> {
+    fn tag_filter(&self) -> Vec<ec2::types::Filter> {
         self.tags
             .iter()
             .map(|(key, value)| (format!("tag:{key}"), [value]))
@@ -503,7 +503,7 @@ impl Ec2Resources {
             .collect()
     }
 
-    fn attachment_vpc_filter(&self) -> Option<ec2::model::Filter> {
+    fn attachment_vpc_filter(&self) -> Option<ec2::types::Filter> {
         let vpcs = self
             .vpcs
             .iter()
@@ -516,7 +516,7 @@ impl Ec2Resources {
         }
     }
 
-    fn requester_vpc_filter(&self) -> Option<ec2::model::Filter> {
+    fn requester_vpc_filter(&self) -> Option<ec2::types::Filter> {
         let vpcs = self
             .vpcs
             .iter()
@@ -550,8 +550,8 @@ pub(crate) async fn get_all_regions() -> Result<Vec<String>, ec2::Error> {
 fn filter(
     key: impl Into<String>,
     values: impl IntoIterator<Item = impl Into<String>>,
-) -> ec2::model::Filter {
-    let builder = ec2::model::Filter::builder().name(key);
+) -> ec2::types::Filter {
+    let builder = ec2::types::Filter::builder().name(key);
     values
         .into_iter()
         .fold(builder, |builder, value| builder.values(value))

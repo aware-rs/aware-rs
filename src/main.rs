@@ -68,7 +68,7 @@ pub(crate) enum AwsService {
         #[arg(help = "Filter by given stack name", long)]
         stack: Vec<String>,
         #[arg(help = "Filter by given stack status", long)]
-        status: Vec<aws::cf::model::StackStatus>,
+        status: Vec<aws::cf::StackStatus>,
     },
 }
 
@@ -145,7 +145,7 @@ async fn collect_ec2(
 async fn collect_cf(
     regions: Vec<String>,
     stack: Vec<String>,
-    status: Vec<aws::cf::model::StackStatus>,
+    status: Vec<aws::cf::StackStatus>,
 ) -> anyhow::Result<()> {
     let regioned_clients = regions
         .into_iter()
