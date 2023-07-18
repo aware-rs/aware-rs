@@ -71,7 +71,7 @@ impl CfResources {
         Ok(())
     }
 
-    pub(crate) fn trees(&self) -> impl Iterator<Item = ptree::item::StringItem> + '_ {
+    pub(crate) fn trees(&self) -> impl Iterator<Item = termtree::Tree<String>> + '_ {
         self.resources
             .iter()
             .map(|(stack, resources)| stack_tree(stack, resources))
@@ -106,26 +106,21 @@ impl CfResources {
 fn stack_tree(
     stack: &cf::types::StackSummary,
     resources: &[cf::types::StackResource],
-) -> ptree::item::StringItem {
-    let mut tree = ptree::TreeBuilder::new(stack.title());
-    add_children(&mut tree, resources);
-    tree.build()
+) -> termtree::Tree<String> {
+    let mut tree = termtree::Tree::new(stack.title());
+    resources.iter().for_each(|resource| {
+        let r#type = resource.resource_type().unwrap_or("no type");
+        let id = resource.physical_resource_id().unwrap_or("no id");
+        tree.push(format!("{type:40}: {id}"));
+    });
+
+    tree
 }
 
 fn is_requested(stack: &cf::types::StackSummary, requested: &BTreeSet<Option<&str>>) -> bool {
     requested.is_empty()
         || requested.contains(&stack.stack_name())
         || requested.contains(&stack.stack_id())
-}
-
-fn add_children(ptree: &mut ptree::TreeBuilder, resources: &[cf::types::StackResource]) {
-    resources.iter().for_each(|resource| {
-        ptree.begin_child(resource.title());
-        let r#type = resource.resource_type().unwrap_or("no type");
-        let id = resource.physical_resource_id().unwrap_or("no id");
-        ptree.add_empty_child(format!("{type:40}: {id}"));
-        ptree.end_child();
-    })
 }
 
 pub(crate) fn adjust_stack_statuses(status: Vec<StackStatus>) -> Vec<StackStatus> {

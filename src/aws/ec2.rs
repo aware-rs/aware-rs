@@ -82,7 +82,7 @@ impl Ec2Resources {
         Ok(())
     }
 
-    pub(crate) fn trees(&self) -> impl Iterator<Item = ptree::item::StringItem> + '_ {
+    pub(crate) fn trees(&self) -> impl Iterator<Item = termtree::Tree<String>> + '_ {
         if self.tag_descriptions.is_empty() {
             self.vpcs()
                 .iter()
@@ -94,7 +94,7 @@ impl Ec2Resources {
         }
     }
 
-    fn tag_tree(&self) -> ptree::item::StringItem {
+    fn tag_tree(&self) -> termtree::Tree<String> {
         let mut tags: HashMap<&str, HashMap<&str, HashMap<&str, Vec<&str>>>> = HashMap::new();
 
         for tag in self.tag_descriptions.iter() {
@@ -107,44 +107,41 @@ impl Ec2Resources {
                 .push(tag.resource_id().unwrap_or_default());
         }
 
-        let mut tree = ptree::TreeBuilder::new(String::from("Tags"));
-        let tree = &mut tree;
+        let mut tree = termtree::Tree::new("Tags".into());
 
         for (tag, values) in tags {
-            tree.begin_child(tag.to_string());
+            let mut leaf = termtree::Tree::new(tag.into());
             for (value, resources) in values {
-                tree.begin_child(value.to_string());
+                let mut value = termtree::Tree::new(value.into());
                 for (resource_type, resource_ids) in resources {
-                    tree.begin_child(resource_type.to_string());
-                    for resource_id in resource_ids {
-                        tree.add_empty_child(resource_id.to_string());
-                    }
-                    tree.end_child();
+                    let r = termtree::Tree::new(resource_type.into())
+                        .with_leaves(resource_ids.into_iter().map(String::from));
+                    value.push(r);
                 }
-                tree.end_child();
+                leaf.push(value);
             }
-            tree.end_child();
+            tree.push(leaf);
         }
-        tree.build()
+        tree
     }
 
-    fn vpc_tree(&self, vpc: &ec2::types::Vpc) -> ptree::item::StringItem {
-        let mut tree = ptree::TreeBuilder::new(vpc.id_and_name());
-        let tree = &mut tree;
+    fn vpc_tree(&self, vpc: &ec2::types::Vpc) -> termtree::Tree<String> {
+        let mut tree = termtree::Tree::new(vpc.id_and_name());
+        let t = &mut tree;
         let vpc_id = vpc.id();
-        add_children(tree, "Subnets", self.subnets(&vpc_id));
-        add_children(tree, "Instances", self.instances(&vpc_id));
-        add_children(tree, "Internet Gateways", self.internet_gateways(&vpc_id));
-        add_children(tree, "Route Tables", self.route_tables(&vpc_id));
-        add_children(tree, "Network ACLs", self.network_acls(&vpc_id));
-        add_children(tree, "VPC Peering Connections", self.vpc_peerings(&vpc_id));
-        add_children(tree, "VPC Endpoints", self.vpc_endpoints(&vpc_id));
-        add_children(tree, "NAT Gateways", self.nat_gateways(&vpc_id));
-        add_children(tree, "Security Groups", self.security_groups(&vpc_id));
-        add_children(tree, "VPN Connections", self.vpn_connections(&vpc_id));
-        add_children(tree, "VPN Gateways", self.vpn_gateways(&vpc_id));
-        add_children(tree, "Network Interfaces", self.network_interfaces(&vpc_id));
-        tree.build()
+        child_tree(t, "Subnets", self.subnets(&vpc_id));
+        child_tree(t, "Instances", self.instances(&vpc_id));
+        child_tree(t, "Internet Gateways", self.internet_gateways(&vpc_id));
+        child_tree(t, "Route Tables", self.route_tables(&vpc_id));
+        child_tree(t, "Network ACLs", self.network_acls(&vpc_id));
+        child_tree(t, "VPC Peering Connections", self.vpc_peerings(&vpc_id));
+        child_tree(t, "VPC Endpoints", self.vpc_endpoints(&vpc_id));
+        child_tree(t, "NAT Gateways", self.nat_gateways(&vpc_id));
+        child_tree(t, "Security Groups", self.security_groups(&vpc_id));
+        child_tree(t, "VPN Connections", self.vpn_connections(&vpc_id));
+        child_tree(t, "VPN Gateways", self.vpn_gateways(&vpc_id));
+        child_tree(t, "Network Interfaces", self.network_interfaces(&vpc_id));
+        tree
     }
 
     fn vpcs(&self) -> &[ec2::types::Vpc] {
@@ -558,12 +555,10 @@ fn filter(
         .build()
 }
 
-fn add_children(ptree: &mut ptree::TreeBuilder, title: impl ToString, resources: Vec<impl Show>) {
+fn child_tree(tree: &mut termtree::Tree<String>, title: impl ToString, resources: Vec<impl Show>) {
     if !resources.is_empty() {
-        ptree.begin_child(title.to_string());
-        resources.into_iter().for_each(|resource| {
-            ptree.add_empty_child(resource.id_and_name());
-        });
-        ptree.end_child();
+        let leaves = resources.into_iter().map(|resource| resource.id_and_name());
+        let leaf = termtree::Tree::new(title.to_string()).with_leaves(leaves);
+        tree.push(leaf);
     }
 }

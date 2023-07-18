@@ -134,8 +134,7 @@ async fn collect_ec2(
         progress.finish();
 
         ec2.trees().for_each(|tree| {
-            println!();
-            ptree::print_tree(&tree).expect("Failed to print tree");
+            println!("\n{tree}");
         });
     }
 
@@ -173,8 +172,7 @@ async fn collect_cf(
         progress.finish();
 
         cf.trees().for_each(|tree| {
-            println!();
-            ptree::print_tree(&tree).expect("Failed to print tree");
+            println!("\n{tree}");
         });
     }
 

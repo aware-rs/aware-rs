@@ -16,7 +16,7 @@ aws-sdk-cloudformation = "0.28"
 clap = { version = "4.0", features = ["derive"] }
 duplicate = "1.0"
 indicatif = "0.17"
-ptree = "0.4"
+termtree = "0.4"
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = "0.1"
 tracing-subscriber = "0.3"
